@@ -22,8 +22,8 @@ type ClientManager struct {
 	//接收离线的客户端信息接收通道，离线处理成功后会将客户端信息从clients中删除
 	unregister chan *Client
 
-	//全局递增的客户端编号
-	clientId int64
+	//客户端编号
+	clientId string
 }
 
 // 实例化一个客户端管理中心

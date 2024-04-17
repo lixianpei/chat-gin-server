@@ -1,17 +1,19 @@
 package im
 
 import (
+	"GoChatServer/helper"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
 const (
 	// Time allowed to write a message to the peer.
 	//设置消息写入writer对象的时长，超出后报错：w.Close() write tcp 127.0.0.1:8081->127.0.0.1:60355: i/o timeout
-	writeWait = 10 * time.Second
+	writeWait = 30 * time.Second
 
 	//服务端会定期向客户端发送 ping 消息，以维持连接的活跃状态。
 	//客户端在收到 ping 消息后，需要及时发送 pong 消息作为响应。
@@ -25,20 +27,15 @@ const (
 	//如果客户端在超过该时间后仍然没有发送 pong 消息，服务端可能会认为客户端已经断开连接，并采取相应的处理措施。
 	// Time allowed to read the next pong message from the peer. pong相应消息
 	//pongWait = 10 * 60 * time.Second
-	pongWait = 10 * time.Second
+	pongWait = 60 * time.Second
 
 	// Send pings to peer with this period. Must be less than pongWait.
 	// pingPeriod 参数用于设置服务端定期发送 ping 消息给客户端的时间间隔。这个时间间隔必须小于客户端响应 ping 消息的等待时间 pongWait。
 	//pingPeriod = (pongWait * 9) / 10
-	pingPeriod = 9 * time.Second
+	pingPeriod = (pongWait * 9) / 10
 
 	// Maximum message size allowed from peer. 超过最大长度将会自动断开连接
-	maxMessageSize = 255
-)
-
-var (
-	newline = []byte{'\n'}
-	space   = []byte{' '}
+	maxMessageSize = 5120
 )
 
 type Client struct {
@@ -51,7 +48,7 @@ type Client struct {
 	//Buffered channel of outbound messages. 出站消息的缓冲通道
 	send chan []byte
 
-	userId int64
+	userId string
 }
 
 var upGrader = websocket.Upgrader{
@@ -170,17 +167,28 @@ func (c *Client) writePump() {
 
 // serveWs handles websocket requests from the peer.
 func serveWs(manager *ClientManager, w http.ResponseWriter, r *http.Request) {
+	// 从请求头中获取认证信息
+	token := strings.TrimSpace(r.Header.Get("Authorization"))
+	if len(token) == 0 {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	claims, err := helper.JwtParseChecking(token)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
 	conn, err := upGrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
 		return
 	}
-	manager.clientId++
 	client := &Client{
 		clientManager: manager,
 		conn:          conn,
 		send:          make(chan []byte, 256),
-		userId:        manager.clientId,
+		userId:        claims.Phone,
 	}
 	client.clientManager.register <- client
 

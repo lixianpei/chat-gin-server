@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	ResponseCodeOk    = 0 //返回成功
-	ResponseCodeError = 1 //普通错误
-	ResponseCodeLogin = 2 //普通错误
+	ResponseCodeOk    = 200 //返回成功
+	ResponseCodeError = 400 //Token解析错误
+	ResponseCodeLogin = 2   //普通错误
 )
 
 // ResponseOk 返回成功
@@ -54,7 +54,7 @@ func ResponseOkWithMessageData(c *gin.Context, data interface{}, message string)
 // ResponseError 返回错误-携带错误消息
 func ResponseError(c *gin.Context, message string) {
 	c.JSON(http.StatusOK, gin.H{
-		"code":    ResponseCodeOk,
+		"code":    ResponseCodeError,
 		"message": message,
 		"data":    gin.H{},
 	})
@@ -64,7 +64,7 @@ func ResponseError(c *gin.Context, message string) {
 // ResponseErrorWithData 返回错误-携带错误消息和数据
 func ResponseErrorWithData(c *gin.Context, message string, data interface{}) {
 	c.JSON(http.StatusOK, gin.H{
-		"code":    ResponseCodeOk,
+		"code":    ResponseCodeError,
 		"message": message,
 		"data":    data,
 	})
