@@ -7,5 +7,8 @@ import (
 
 func InitRoute(e *gin.Engine) {
 	//定义路由
-	e.GET("/login", api.Login)
+	apiRouter := e.Group("/api")
+	{
+		apiRouter.GET("/login", api.Login)
+	}
 }

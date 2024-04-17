@@ -1,4 +1,4 @@
-package ws
+package im
 
 import (
 	"fmt"
@@ -51,7 +51,7 @@ type Client struct {
 	//Buffered channel of outbound messages. 出站消息的缓冲通道
 	send chan []byte
 
-	id int64
+	userId int64
 }
 
 var upGrader = websocket.Upgrader{
@@ -122,7 +122,7 @@ func (c *Client) writePump() {
 			if !ok {
 				// The hub closed the channel.
 				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
-				fmt.Printf("服务端监听客户端【%d】的writePump发现错误：%s \r\n", c.id, ok)
+				fmt.Printf("服务端监听客户端【%d】的writePump发现错误：%s \r\n", c.userId, ok)
 				return
 			}
 
@@ -138,7 +138,7 @@ func (c *Client) writePump() {
 			if err != nil {
 				//TODO
 			}
-			fmt.Printf("服务端发送给客户端[%d]消息，消息长度[%d]，发送状态：[%s]，消息内容：%s \r\n", c.id, writeN, err, string(message))
+			fmt.Printf("服务端发送给客户端[%d]消息，消息长度[%d]，发送状态：[%s]，消息内容：%s \r\n", c.userId, writeN, err, string(message))
 
 			//为了区分消息独立性，此处不建议全部刷数据给客户端，除非同客户端协商处理每个消息的分隔符
 			// Add queued chat messages to the current websocket message.
@@ -152,16 +152,16 @@ func (c *Client) writePump() {
 			//w.Close() 的作用是关闭当前的写入器，将消息刷新到连接并释放资源。
 			if err := w.Close(); err != nil {
 				fmt.Println("w.Close()", err.Error())
-				fmt.Printf("服务端发送给客户端[%d]消息，消息长度[%d]，关闭当前的写入器状态失败：[%s]，消息内容：%s \r\n", c.id, writeN, err.Error(), string(message))
+				fmt.Printf("服务端发送给客户端[%d]消息，消息长度[%d]，关闭当前的写入器状态失败：[%s]，消息内容：%s \r\n", c.userId, writeN, err.Error(), string(message))
 				return
 			}
 
 		case <-ticker.C:
 			//触发服务端ping客户端的定时器
-			fmt.Printf("服务端主动发送ping消息给客户端：%d ,time:%s \r\n", c.id, time.Now().Local().Format(time.DateTime))
+			fmt.Printf("服务端主动发送ping消息给客户端：%d ,time:%s \r\n", c.userId, time.Now().Local().Format(time.DateTime))
 			_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
-				fmt.Printf("服务端主动发送ping消息给客户端：%d ，发现错误：%s \r\n", c.id, err.Error())
+				fmt.Printf("服务端主动发送ping消息给客户端：%d ，发现错误：%s \r\n", c.userId, err.Error())
 				return
 			}
 		}
@@ -180,7 +180,7 @@ func serveWs(manager *ClientManager, w http.ResponseWriter, r *http.Request) {
 		clientManager: manager,
 		conn:          conn,
 		send:          make(chan []byte, 256),
-		id:            manager.clientId,
+		userId:        manager.clientId,
 	}
 	client.clientManager.register <- client
 

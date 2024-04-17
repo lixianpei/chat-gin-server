@@ -1,4 +1,4 @@
-package ws
+package im
 
 import (
 	"fmt"
@@ -46,10 +46,10 @@ func (manager *ClientManager) ClientRegister(client *Client) {
 	//注册用户
 	manager.clients[client] = true
 
-	fmt.Println("EventClientRegister 用户建立连接：", client.id)
+	fmt.Println("EventClientRegister 用户建立连接：", client.userId)
 
 	//发送广播消息
-	helloMessage := NewMessageTextHello(fmt.Sprintf("欢迎“%d”进入聊天", client.id))
+	helloMessage := NewMessageTextHello(fmt.Sprintf("欢迎“%d”进入聊天", client.userId))
 	manager.SendBroadcastMessage([]byte(helloMessage))
 }
 
@@ -63,9 +63,9 @@ func (manager *ClientManager) ClientUnregister(client *Client) {
 	if _, ok := manager.clients[client]; ok {
 		delete(manager.clients, client) //删除用户的在线列表
 		close(client.send)              //关闭消息接收的通道
-		fmt.Println("用户已下线：", client.id)
+		fmt.Println("用户已下线：", client.userId)
 	} else {
-		fmt.Println("ClientUnregister：未找到用户", client.id)
+		fmt.Println("ClientUnregister：未找到用户", client.userId)
 	}
 }
 
@@ -75,7 +75,7 @@ func (manager *ClientManager) SendBroadcastMessage(message []byte) {
 		select {
 		case client.send <- message:
 			//将广播消息发送给客户端的chan，再由客户端通过conn发送给客户端
-			fmt.Printf("给客户端【%d】发送消息: %s \r\n", client.id, message)
+			fmt.Printf("给客户端【%d】发送消息: %s \r\n", client.userId, message)
 		default:
 			//没有找到客户端则表示已离线
 			manager.ClientUnregister(client)

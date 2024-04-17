@@ -1,8 +1,8 @@
 package main
 
 import (
+	"GoChatServer/im"
 	"GoChatServer/router"
-	"GoChatServer/ws"
 	"github.com/gin-gonic/gin"
 	"log"
 )
@@ -15,7 +15,7 @@ func main() {
 	router.InitRoute(engine)
 
 	//初始化Ws
-	ws.InitWebsocket(engine)
+	im.InitWebsocket(engine)
 
 	//启动服务 TODO : 优雅启动
 	err := engine.Run(":8081")
