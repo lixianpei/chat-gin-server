@@ -2,7 +2,7 @@ package consts
 
 // 时间格式化模板
 const (
-	DateTimeTpYMDHIS = "20060102150405"
-	DateTimeTpYMD    = "20060102"
-	DateTImeTpY      = "2006"
+	DateYMDHIS = "20060102150405"
+	DateYMD    = "20060102"
+	DateY      = "2006"
 )
