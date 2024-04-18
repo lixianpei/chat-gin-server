@@ -1,7 +1,8 @@
-package im
+package ws
 
 import (
 	"GoChatServer/helper"
+	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
@@ -39,7 +40,7 @@ const (
 )
 
 type Client struct {
-	//消息中心-集线器
+	//im在线管理，后期可以
 	clientManager *ClientManager
 
 	//websocket connection
@@ -95,9 +96,37 @@ func (c *Client) readPump() {
 		}
 		//原始消息不处理
 		//message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
+		if string(message) == "ping" {
+			c.send <- []byte("pong")
+			break
+		}
 
 		//TODO 可根据消息类型进行判断是群消息还是私聊消息
-		c.clientManager.broadcast <- message
+		var messageData Message
+		mErr := json.Unmarshal(message, &messageData)
+		if mErr != nil {
+			fmt.Println(fmt.Sprintf("客户端【%s】发送的消息解析错误：%s", c.userId, mErr.Error()))
+			break
+		}
+		isSingleChat := len(messageData.Receiver) > 0 && messageData.Receiver != "0"
+		isGroupChat := messageData.GroupId > 0
+		switch {
+		case isSingleChat:
+			//私聊消息
+			client := IM.GetClientByUserId(messageData.Receiver)
+			if client != nil {
+				client.send <- message
+			} else {
+				//未在线
+				fmt.Println(fmt.Sprintf("客户端【%s】发送的消息【%s】未能转发出去，单聊客户端未在线", c.userId, string(message)))
+			}
+		case isGroupChat:
+			//群消息 TODO
+		default:
+			//广播消息
+			c.clientManager.broadcast <- message
+
+		}
 	}
 }
 
@@ -135,7 +164,7 @@ func (c *Client) writePump() {
 			if err != nil {
 				//TODO
 			}
-			fmt.Printf("服务端发送给客户端[%d]消息，消息长度[%d]，发送状态：[%s]，消息内容：%s \r\n", c.userId, writeN, err, string(message))
+			fmt.Printf("服务端发送给客户端[%s]消息，消息长度[%d]，发送状态：[%s]，消息内容：%s \r\n", c.userId, writeN, err, string(message))
 
 			//为了区分消息独立性，此处不建议全部刷数据给客户端，除非同客户端协商处理每个消息的分隔符
 			// Add queued chat messages to the current websocket message.

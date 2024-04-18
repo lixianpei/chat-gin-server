@@ -2,7 +2,7 @@ package api
 
 import (
 	"GoChatServer/helper"
-	"fmt"
+	"GoChatServer/ws"
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,7 +13,7 @@ type LoginForm struct {
 
 func Login(c *gin.Context) {
 	var loginForm LoginForm
-	err := c.ShouldBindQuery(&loginForm)
+	err := c.ShouldBind(&loginForm)
 	if err != nil {
 		helper.ResponseError(c, err.Error())
 		return
@@ -26,18 +26,13 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	//解析数据
-	claims, err := helper.JwtParseChecking(token)
-	fmt.Println(err, claims)
-	if err != nil {
-		helper.ResponseError(c, err.Error())
-		return
-	}
+	helper.ResponseOkWithMessageData(c, gin.H{
+		"token": token,
+	}, "ok")
+}
 
-	data := gin.H{
-		"token":  token,
-		"claims": claims,
-	}
-
-	helper.ResponseOkWithMessageData(c, data, "ok")
+// GetOnlineList 获取在线的所有客户端
+func GetOnlineList(c *gin.Context) {
+	clients := ws.IM.OnlineClients()
+	helper.ResponseOkWithData(c, clients)
 }
