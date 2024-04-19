@@ -1,13 +1,11 @@
 package main
 
 import (
-	"GoChatServer/consts"
 	"GoChatServer/helper"
 	"GoChatServer/router"
 	"GoChatServer/ws"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 var (
@@ -34,8 +32,6 @@ func main() {
 	//初始化Ws
 	ws.InitWebsocket(engine)
 
-	go TestLog()
-
 	Logger.Info("Main服务已启动...")
 
 	//启动服务 TODO : 优雅启动
@@ -44,11 +40,4 @@ func main() {
 		Logger.Error("Main服务启动异常：", err.Error())
 	}
 	Logger.Error("Main服务已停止....")
-}
-
-func TestLog() {
-	for {
-		Logger.Info("测试日志......" + time.Now().Format(consts.DateYMDHIS))
-		time.Sleep(5 * time.Second)
-	}
 }
