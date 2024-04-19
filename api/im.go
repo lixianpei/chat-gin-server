@@ -27,7 +27,9 @@ func Login(c *gin.Context) {
 	}
 
 	helper.ResponseOkWithMessageData(c, gin.H{
-		"token": token,
+		"token":    token,
+		"phone":    loginForm.Phone,
+		"nickname": loginForm.Nickname,
 	}, "ok")
 }
 
