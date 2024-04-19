@@ -7,7 +7,6 @@ import (
 	"GoChatServer/ws"
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
-	"log"
 	"time"
 )
 
@@ -42,8 +41,9 @@ func main() {
 	//启动服务 TODO : 优雅启动
 	err := engine.Run(Configs.Server.Address)
 	if err != nil {
-		log.Panicln(err.Error())
+		Logger.Error("Main服务启动异常：", err.Error())
 	}
+	Logger.Error("Main服务已停止....")
 }
 
 func TestLog() {
