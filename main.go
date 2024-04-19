@@ -32,7 +32,7 @@ func main() {
 	//初始化Ws
 	ws.InitWebsocket(engine)
 
-	Logger.Info("Main服务已启动...")
+	Logger.Info("Main服务已启动...0000")
 
 	//启动服务 TODO : 优雅启动
 	err := engine.Run(Configs.Server.Address)
