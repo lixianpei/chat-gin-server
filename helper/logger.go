@@ -59,7 +59,7 @@ func (hook *CustomLogFile) Levels() []logrus.Level {
 
 func logFileOut() (file *os.File) {
 	runPath, _ := os.Getwd()
-	dateDay := time.Now().Local().Format(consts.DateYMDHIS)
+	dateDay := time.Now().Local().Format(consts.DateYMD)
 	logFilename := filepath.Join(runPath, "logs", dateDay+".log")
 	if NewFile(logFilename) {
 		var err error
