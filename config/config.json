@@ -9,5 +9,11 @@
     "user": "root",
     "password": "123456",
     "database": "chat"
+  },
+  "weiXin": {
+    "appid": "wx21988c2d8d81bacc",
+    "secret": "66b92b375be9bf2b869f18487365d68c"
+  },
+  "redis": {
   }
 }

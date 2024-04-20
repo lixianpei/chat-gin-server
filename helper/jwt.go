@@ -13,22 +13,26 @@ const JwtSigningKeyStr = "Hkuq4oEDYLrb7ghygyDPEyoLHmEwT8nvmMX5jS8BrJXt4tei0Vf1sp
 type MyCustomJwtClaims struct {
 	Phone    string `json:"phone"`
 	Nickname string `json:"nickname"`
+	UserId   int64  `json:"user_id"`
 	jwt.StandardClaims
 }
 
 // NewJwtToken 生成Token
-func NewJwtToken(phone string, nickname string) (string, error) {
+func NewJwtToken(userId int64, phone string, nickname string) (string, error) {
 	mySigningKey := []byte(JwtSigningKeyStr)
 
 	// Create the Claims
 	claims := MyCustomJwtClaims{
+		UserId:   userId,
 		Phone:    phone,
 		Nickname: nickname,
 		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Minute * 1).Unix(), // 设置过期时间为1分钟
+			ExpiresAt: time.Now().Add(time.Minute * 60).Unix(),
 			Issuer:    "chatGinServer",
 		},
 	}
+
+	fmt.Println("NewJwtToken...", userId, phone, nickname)
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(mySigningKey)

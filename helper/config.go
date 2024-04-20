@@ -5,7 +5,13 @@ import (
 	"github.com/spf13/viper"
 )
 
-func NewConfig(configPath string) (c *ConfigData) {
+var Configs *ConfigData
+
+func InitConfig(path string) {
+	Configs = newConfig(path)
+}
+
+func newConfig(configPath string) (c *ConfigData) {
 	v := viper.New()
 	v.AddConfigPath(configPath)
 	v.SetConfigType("json")
@@ -27,11 +33,9 @@ func NewConfig(configPath string) (c *ConfigData) {
 }
 
 type ConfigData struct {
-	// 服务相关配置
-	Server configServer
-
-	// 数据库相关配置
-	Db configDb
+	Server configServer // 服务相关配置
+	Db     configDb     // 数据库相关配置
+	WeiXin configWeiXin //微信相关配置
 }
 
 // 服务相关配置
@@ -47,4 +51,10 @@ type configDb struct {
 	User     string
 	Password string
 	Database string
+}
+
+// 微信相关配置
+type configWeiXin struct {
+	Appid  string
+	Secret string
 }

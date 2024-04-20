@@ -10,8 +10,14 @@ import (
 	"time"
 )
 
-// NewLogger 实例化Logger
-func NewLogger() *logrus.Logger {
+var Logger *logrus.Logger
+
+func InitLogger() {
+	Logger = newLogger()
+}
+
+// newLogger 实例化Logger
+func newLogger() *logrus.Logger {
 	log := logrus.New()
 	log.SetReportCaller(true)
 	log.SetFormatter(&MyFormatter{})
