@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 )
 
@@ -34,4 +35,12 @@ func NewFile(filename string) bool {
 	} else {
 		return true
 	}
+}
+
+// GenerateStaticUrl 生成可访问的全路径url
+func GenerateStaticUrl(filename string) string {
+	if len(filename) == 0 {
+		return ""
+	}
+	return path.Join(Configs.Server.Host, Configs.Server.StaticFileServerPath, filename)
 }

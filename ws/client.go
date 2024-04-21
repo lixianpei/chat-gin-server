@@ -1,7 +1,10 @@
 package ws
 
 import (
+	"GoChatServer/dal/model/chat_model"
+	"GoChatServer/dal/query/chat_query"
 	"GoChatServer/helper"
+	"GoChatServer/service"
 	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
@@ -49,7 +52,8 @@ type Client struct {
 	//Buffered channel of outbound messages. 出站消息的缓冲通道
 	send chan []byte
 
-	userId string
+	userId   int64
+	userInfo *chat_model.User
 }
 
 var upGrader = websocket.Upgrader{
@@ -86,7 +90,7 @@ func (c *Client) readPump() {
 	})
 	for {
 		_, message, err := c.conn.ReadMessage()
-		fmt.Println("ReadMessage=========", string(message))
+		fmt.Println("服务器接收到客户端的消息：", string(message))
 		if err != nil {
 			fmt.Printf("读客户端消息发现错误：%s \r\n", err.Error())
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
@@ -95,36 +99,40 @@ func (c *Client) readPump() {
 			break
 		}
 		//原始消息不处理
-		//message = bytes.TrimSpace(bytes.Replace(message, newline, space, -1))
 		if string(message) == "ping" {
 			c.send <- []byte("pong")
 			break
 		}
 
 		//TODO 可根据消息类型进行判断是群消息还是私聊消息
-		var messageData Message
-		mErr := json.Unmarshal(message, &messageData)
-		if mErr != nil {
-			fmt.Println(fmt.Sprintf("客户端【%s】发送的消息解析错误：%s", c.userId, mErr.Error()))
+
+		messageData, err := HandleMessageSave(string(message), c.userId)
+		if err != nil {
+			fmt.Println(fmt.Sprintf("客户端【%d】发送的消息解析错误：%s", c.userId, err.Error()))
 			break
 		}
-		isSingleChat := len(messageData.Receiver) > 0 && messageData.Receiver != "0"
+		isSingleChat := messageData.Receiver > 0
 		isGroupChat := messageData.GroupId > 0
+
+		//整理组装后的消息，包含消息发送人的头像等其他扩展信息
+		messageJson, _ := json.Marshal(messageData)
+
 		switch {
 		case isSingleChat:
 			//私聊消息
 			client := IM.GetClientByUserId(messageData.Receiver)
 			if client != nil {
-				client.send <- message
+				client.send <- messageJson
 			} else {
 				//未在线
 				fmt.Println(fmt.Sprintf("客户端【%s】发送的消息【%s】未能转发出去，单聊客户端未在线", c.userId, string(message)))
 			}
 		case isGroupChat:
-			//群消息 TODO
+			//群消息：暂时当做广播消息发送出去 TODO
+			c.clientManager.broadcast <- messageJson
 		default:
 			//广播消息
-			c.clientManager.broadcast <- message
+			c.clientManager.broadcast <- messageJson
 
 		}
 	}
@@ -164,7 +172,7 @@ func (c *Client) writePump() {
 			if err != nil {
 				//TODO
 			}
-			fmt.Printf("服务端发送给客户端[%s]消息，消息长度[%d]，发送状态：[%s]，消息内容：%s \r\n", c.userId, writeN, err, string(message))
+			fmt.Printf("服务端发送给客户端[%d]消息，消息内容：%s \r\n", c.userId, string(message))
 
 			//为了区分消息独立性，此处不建议全部刷数据给客户端，除非同客户端协商处理每个消息的分隔符
 			// Add queued chat messages to the current websocket message.
@@ -208,6 +216,10 @@ func serveWs(manager *ClientManager, w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	//获取用户信息
+	userInfo, _ := service.User.GetUserById(claims.UserId)
+	fmt.Println("userInfo....serverWs...", userInfo)
+
 	conn, err := upGrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Println(err)
@@ -217,7 +229,8 @@ func serveWs(manager *ClientManager, w http.ResponseWriter, r *http.Request) {
 		clientManager: manager,
 		conn:          conn,
 		send:          make(chan []byte, 256),
-		userId:        claims.Phone,
+		userId:        claims.UserId,
+		userInfo:      userInfo,
 	}
 	client.clientManager.register <- client
 
@@ -225,4 +238,89 @@ func serveWs(manager *ClientManager, w http.ResponseWriter, r *http.Request) {
 	// new goroutines.
 	go client.writePump()
 	go client.readPump()
+}
+
+// HandleMessageSave 处理用户消息保存
+func HandleMessageSave(wsMessage string, sender int64) (messageData Message, err error) {
+	err = json.Unmarshal([]byte(wsMessage), &messageData)
+	if err != nil {
+		return messageData, err
+	}
+
+	mUser, err := service.User.GetUserById(sender)
+	if err != nil {
+		return messageData, fmt.Errorf("用戶不存在")
+	}
+
+	//生成消息的发送人的头像
+	messageData.SenderAvatar = helper.GenerateStaticUrl(mUser.Avatar)
+
+	//消息内容
+	mMessage := chat_model.Message{
+		Sender:  mUser.ID,
+		Content: messageData.Data,
+	}
+	//消息关联的用户
+	messageUsers := make([]*chat_model.MessageUser, 0)
+
+	//消息入库
+	err = helper.Db.Transaction(func(tx *chat_query.Query) error {
+		//保存消息
+		err = tx.Message.Create(&mMessage)
+		if err != nil {
+			return err
+		}
+
+		//查询消息关联的用户,TODO 暂时查询全量用户
+		users := make([]*chat_model.User, 0)
+		err = tx.User.Scan(&users)
+		if err != nil {
+			return err
+		}
+
+		for _, user := range users {
+			messageUsers = append(messageUsers, &chat_model.MessageUser{
+				MessageID: mMessage.ID,
+				Receiver:  user.ID,
+				IsRead:    0,
+			})
+		}
+		if len(messageUsers) > 0 {
+			err = tx.MessageUser.Create(messageUsers...)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return messageData, err
+	}
+
+	messageData.MessageId = mMessage.ID
+
+	////消息推入消息中心：
+	//if len(messageUsers) > 0 {
+	//	for _, messageUser := range messageUsers {
+	//		message := Message{
+	//			MessageId:    mMessage.ID,
+	//			Type:         MessageTypeNormal,
+	//			Sender:       mUser.ID,
+	//			Receiver:     messageData.Receiver,
+	//			GroupId:      0,
+	//			Data:         messageData.Data,
+	//			Time:         time.Now().Local().Format(time.DateTime),
+	//			SenderAvatar: helper.GenerateStaticUrl(mUser.Avatar),
+	//		}
+	//
+	//		messageJsonByte, err := json.Marshal(message)
+	//		if err != nil {
+	//			helper.Logger.Errorf("消息[%d]Marshal失败：%s", message.MessageId, err.Error())
+	//			continue
+	//		}
+	//
+	//		IM.SendMessageByUserId(messageJsonByte, messageUser.Receiver)
+	//	}
+	//}
+	return messageData, nil
 }

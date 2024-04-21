@@ -3,24 +3,27 @@ package api
 import (
 	"GoChatServer/consts"
 	"GoChatServer/dal/model/chat_model"
+	"GoChatServer/dal/query/chat_query"
 	"GoChatServer/helper"
+	"GoChatServer/service"
 	"GoChatServer/ws"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	uuid "github.com/satori/go.uuid"
 	"path"
+	"time"
 )
 
-type LoginForm struct {
+type WxLoginForm struct {
 	Phone    string `form:"phone"`
 	Nickname string `form:"nickname"`
-	Code     string `form:"code"`
+	Code     string `form:"code" binding:"required"`
 }
 
 // WxLogin 微信登录
 func WxLogin(c *gin.Context) {
-	var loginForm LoginForm
+	var loginForm WxLoginForm
 	err := c.ShouldBind(&loginForm)
 	if err != nil {
 		helper.ResponseError(c, err.Error())
@@ -66,10 +69,6 @@ func WxLogin(c *gin.Context) {
 		})
 	}
 
-	//TODO
-	loginForm.Phone = "18083198680"
-	loginForm.Nickname = "LiXianPei"
-
 	//生成token
 	token, err := helper.NewJwtToken(mUserInfo.ID, loginForm.Phone, loginForm.Nickname)
 	if err != nil {
@@ -84,6 +83,66 @@ func WxLogin(c *gin.Context) {
 		"nickname":  loginForm.Nickname,
 		"wxResult":  wxResult,
 		"mUserInfo": mUserInfo,
+	}, "ok")
+}
+
+type PhoneLoginForm struct {
+	Phone    string `form:"phone" binding:"required"`
+	Nickname string `form:"nickname" binding:"required"`
+	Avatar   string `form:"avatar"`
+}
+
+// PhoneLogin 手机号登录
+func PhoneLogin(c *gin.Context) {
+	var loginForm PhoneLoginForm
+	err := c.ShouldBind(&loginForm)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	//查询用户是否存在
+	qUser := helper.Db.User
+	mUserInfo := &chat_model.User{}
+	err = helper.Db.WithContext(c).User.
+		Select(qUser.ID, qUser.UserName, qUser.Nickname).
+		Where(qUser.Phone.Eq(loginForm.Phone)).
+		Scan(mUserInfo)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+	if mUserInfo.ID == 0 {
+		//创建新用户
+		mUserInfo = &chat_model.User{
+			Phone:    loginForm.Phone,
+			Nickname: loginForm.Nickname,
+			Avatar:   loginForm.Avatar,
+		}
+		err = helper.Db.WithContext(c).User.Create(mUserInfo)
+		if err != nil {
+			helper.ResponseError(c, err.Error())
+			return
+		}
+	} else {
+		//保存信息数据
+		_, err = helper.Db.WithContext(c).User.Where(qUser.ID.Eq(mUserInfo.ID)).Updates(&chat_model.User{
+			Nickname: loginForm.Nickname,
+		})
+	}
+
+	//生成token
+	token, err := helper.NewJwtToken(mUserInfo.ID, loginForm.Phone, loginForm.Nickname)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	helper.ResponseOkWithMessageData(c, gin.H{
+		"user_id":  mUserInfo.ID,
+		"token":    token,
+		"phone":    loginForm.Phone,
+		"nickname": loginForm.Nickname,
 	}, "ok")
 }
 
@@ -151,13 +210,15 @@ func WxUserInfoSave(c *gin.Context) {
 	})
 }
 
-type WxUserAvatarForm struct {
-	Avatar string `form:"avatar"`
+type UserAvatarForm struct {
+	Avatar   string `form:"avatar"`
+	Nickname string `form:"nickname"`
+	Phone    string `form:"phone"`
 }
 
-// WxUserAvatarSave 微信头像存储-头像为临时头像，暂时不需要此接口
-func WxUserAvatarSave(c *gin.Context) {
-	var form WxUserAvatarForm
+// UserInfoSave 微信头像存储-头像为临时头像，暂时不需要此接口
+func UserInfoSave(c *gin.Context) {
+	var form UserAvatarForm
 	err := c.ShouldBind(&form)
 	if err != nil {
 		helper.ResponseError(c, err.Error())
@@ -169,13 +230,15 @@ func WxUserAvatarSave(c *gin.Context) {
 	mUser := chat_model.User{}
 	err = qUser.WithContext(c).Where(qUser.ID.Eq(c.GetInt64(consts.UserId))).Scan(&mUser)
 	if err != nil || mUser.ID == 0 {
-		helper.ResponseError(c, "用户不存在")
+		helper.ResponseError(c, fmt.Sprintf("用户不存在：%d", c.GetInt64(consts.UserId)))
 		return
 	}
 
 	//保存用户信息
 	updateUser := chat_model.User{
-		Avatar: form.Avatar,
+		Avatar:   form.Avatar,
+		Nickname: form.Nickname,
+		Phone:    form.Phone,
 	}
 	_, err = qUser.WithContext(c).Where(qUser.ID.Eq(mUser.ID)).Updates(updateUser)
 	if err != nil {
@@ -215,5 +278,96 @@ func UploadFile(c *gin.Context) {
 	helper.ResponseOkWithData(c, gin.H{
 		"filepath": filepath,         //数据库存储的文件路径
 		"url":      staticServerPath, //访问文件的url
+	})
+}
+
+type SendMessageForm struct {
+	//Type     string `form:"type" binding:"required"`//消息类型
+	Content  string `form:"content" binding:"required"`  //消息类型
+	Receiver int64  `form:"receiver" binding:"required"` //消息接收的用户ID
+}
+
+func SendMessage(c *gin.Context) {
+	var form SendMessageForm
+	err := c.ShouldBind(&form)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	mUser, err := service.User.GetLoginUser(c)
+	if err != nil {
+		helper.ResponseError(c, fmt.Sprintf("用户不存在：%d", c.GetInt64(consts.UserId)))
+		return
+	}
+
+	//消息内容
+	mMessage := chat_model.Message{
+		Sender:  mUser.ID,
+		Content: form.Content,
+	}
+	//消息关联的用户
+	messageUsers := make([]*chat_model.MessageUser, 0)
+
+	//消息入库
+	err = helper.Db.Transaction(func(tx *chat_query.Query) error {
+		//保存消息
+		err = tx.WithContext(c).Message.Create(&mMessage)
+		if err != nil {
+			return err
+		}
+
+		//查询消息关联的用户,TODO 暂时查询全量用户
+		users := make([]*chat_model.User, 0)
+		err = tx.WithContext(c).User.Scan(&users)
+		if err != nil {
+			return err
+		}
+
+		for _, user := range users {
+			messageUsers = append(messageUsers, &chat_model.MessageUser{
+				MessageID: mMessage.ID,
+				Receiver:  user.ID,
+				IsRead:    0,
+			})
+		}
+		if len(messageUsers) > 0 {
+			err = tx.WithContext(c).MessageUser.Create(messageUsers...)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	//消息推入消息中心：
+	if len(messageUsers) > 0 {
+		for _, messageUser := range messageUsers {
+			message := ws.Message{
+				MessageId:    mMessage.ID,
+				Type:         ws.MessageTypeNormal,
+				Sender:       mUser.ID,
+				Receiver:     form.Receiver,
+				GroupId:      0,
+				Data:         form.Content,
+				Time:         time.Now().Local().Format(time.DateTime),
+				SenderAvatar: helper.GenerateStaticUrl(mUser.Avatar),
+			}
+
+			messageJsonByte, err := json.Marshal(message)
+			if err != nil {
+				helper.Logger.Errorf("消息[%d]Marshal失败：%s", message.MessageId, err.Error())
+				continue
+			}
+			ws.IM.SendMessageByUserId(messageJsonByte, messageUser.Receiver)
+		}
+	}
+
+	helper.ResponseOkWithData(c, gin.H{
+		"message_id": mMessage.ID,
 	})
 }

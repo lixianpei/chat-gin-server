@@ -2,6 +2,7 @@ package router
 
 import (
 	"GoChatServer/api"
+	"GoChatServer/middleware"
 	"github.com/gin-gonic/gin"
 )
 
@@ -10,12 +11,13 @@ func InitRoute(e *gin.Engine) {
 	apiRouter := e.Group("/api")
 	{
 		//鉴权中间件
-		//apiRouter.Use(middleware.LoginAuth())
+		apiRouter.Use(middleware.LoginAuth())
 
 		apiRouter.POST("/im/login", api.WxLogin)
-		apiRouter.POST("/im/wx_user_save", api.WxUserInfoSave)
-		apiRouter.POST("/im/wx_user_avatar_save", api.WxUserAvatarSave)
-		apiRouter.POST("/im/GetOnlineList", api.GetOnlineList)
+		apiRouter.POST("/im/phoneLogin", api.PhoneLogin)
+		apiRouter.POST("/im/wxUserSave", api.WxUserInfoSave)
+		apiRouter.POST("/im/userInfoSave", api.UserInfoSave)
+		apiRouter.POST("/im/getOnlineList", api.GetOnlineList)
 		apiRouter.POST("/im/upload", api.UploadFile)
 	}
 }

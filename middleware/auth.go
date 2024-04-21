@@ -8,7 +8,9 @@ import (
 )
 
 var LoginAuthUriWhiteList = map[string]bool{
-	"/api/im/login": true,
+	"/api/im/login":      true,
+	"/api/im/phoneLogin": true,
+	"/api/im/upload":     true,
 }
 
 func LoginAuth() gin.HandlerFunc {

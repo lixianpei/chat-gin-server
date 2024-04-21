@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"GoChatServer/helper"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -11,8 +12,8 @@ import (
 type ClientManager struct {
 	//已注册的客户端
 	clients          map[*Client]bool
-	lock             sync.Mutex         //并发锁
-	clientsUserIdMap map[string]*Client //保存客户与连接的关系：暂时用手机号
+	lock             sync.Mutex        //并发锁
+	clientsUserIdMap map[int64]*Client //保存客户与连接的关系：暂时用手机号
 
 	//广播消息：需要发送给全站用户的消息接收通道
 	broadcast chan []byte
@@ -31,7 +32,7 @@ type ClientManager struct {
 func newClientManager() *ClientManager {
 	return &ClientManager{
 		clients:          make(map[*Client]bool),
-		clientsUserIdMap: make(map[string]*Client),
+		clientsUserIdMap: make(map[int64]*Client),
 		broadcast:        make(chan []byte, 256),
 		register:         make(chan *Client, 256),
 		unregister:       make(chan *Client, 256),
@@ -61,10 +62,8 @@ func (manager *ClientManager) ClientRegister(client *Client) {
 	manager.clients[client] = true
 	manager.clientsUserIdMap[client.userId] = client
 
-	fmt.Println("EventClientRegister 用户建立连接：", client.userId)
-
 	//发送广播消息
-	helloMessage := NewEntryGroupMessage(fmt.Sprintf("欢迎“%s”进入聊天", client.userId))
+	helloMessage := NewEntryGroupMessage(fmt.Sprintf("欢迎“%s”进入聊天", client.userInfo.Nickname))
 	manager.SendBroadcastMessage([]byte(helloMessage))
 
 	//发送消息给好友
@@ -92,12 +91,23 @@ func (manager *ClientManager) SendBroadcastMessage(message []byte) {
 		select {
 		case client.send <- message:
 			//将广播消息发送给客户端的chan，再由客户端通过conn发送给客户端
-			fmt.Printf("给客户端【%s】发送消息: %s \r\n", client.userId, message)
+			fmt.Printf("给客户端【%d】发送消息: %s \r\n", client.userId, message)
 		default:
 			//没有找到客户端则表示已离线
 			manager.ClientUnregister(client)
 		}
 	}
+}
+
+// SendMessageByUserId 发送消息
+func (manager *ClientManager) SendMessageByUserId(message []byte, userId int64) {
+
+	client, ok := manager.clientsUserIdMap[userId]
+	if !ok {
+		helper.Logger.Errorf("消息找不到在线用户【%d】：%s", userId, string(message))
+		return
+	}
+	client.send <- message
 }
 
 func (manager *ClientManager) run() {
@@ -125,8 +135,8 @@ func (manager *ClientManager) run() {
 }
 
 // OnlineClients 获取在线的所有客户端
-func (manager *ClientManager) OnlineClients() []string {
-	clients := make([]string, 0)
+func (manager *ClientManager) OnlineClients() []int64 {
+	clients := make([]int64, 0)
 	for client, _ := range manager.clients {
 		clients = append(clients, client.userId)
 	}
@@ -134,7 +144,7 @@ func (manager *ClientManager) OnlineClients() []string {
 }
 
 // GetClientByUserId 根据userid获取在线客户端
-func (manager *ClientManager) GetClientByUserId(userId string) *Client {
+func (manager *ClientManager) GetClientByUserId(userId int64) *Client {
 	manager.lock.Lock()
 	defer func() {
 		manager.lock.Unlock()
