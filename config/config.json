@@ -4,7 +4,7 @@
     "env": "dev",
     "uploadFilePath": "uploads",
     "host": "http://127.0.0.1:8081",
-    "staticFileServerPath": "static/uploads"
+    "staticFileServerPath": "/static/uploads"
   },
   "db": {
     "host": "127.0.0.1",

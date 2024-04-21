@@ -42,5 +42,5 @@ func GenerateStaticUrl(filename string) string {
 	if len(filename) == 0 {
 		return ""
 	}
-	return path.Join(Configs.Server.Host, Configs.Server.StaticFileServerPath, filename)
+	return Configs.Server.Host + path.Join(Configs.Server.StaticFileServerPath, filename)
 }

@@ -273,11 +273,9 @@ func UploadFile(c *gin.Context) {
 		return
 	}
 
-	staticServerPath := path.Join(helper.Configs.Server.Host, helper.Configs.Server.StaticFileServerPath, filepath)
-
 	helper.ResponseOkWithData(c, gin.H{
-		"filepath": filepath,         //数据库存储的文件路径
-		"url":      staticServerPath, //访问文件的url
+		"filepath": filepath,                           //数据库存储的文件路径
+		"url":      helper.GenerateStaticUrl(filepath), //访问文件的url
 	})
 }
 
