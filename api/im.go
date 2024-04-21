@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
+	uuid "github.com/satori/go.uuid"
+	"path"
 )
 
 type LoginForm struct {
@@ -187,4 +189,31 @@ func WxUserAvatarSave(c *gin.Context) {
 func GetOnlineList(c *gin.Context) {
 	clients := ws.IM.OnlineClients()
 	helper.ResponseOkWithData(c, clients)
+}
+
+func UploadFile(c *gin.Context) {
+	// 单文件
+	file, err := c.FormFile("file")
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	uuider := uuid.NewV4()
+	filepath := path.Join("avatars", uuider.String()+path.Ext(file.Filename))
+	dst := path.Join(helper.Configs.Server.UploadFilePath, filepath)
+
+	// 上传文件至指定的完整文件路径
+	err = c.SaveUploadedFile(file, dst)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	staticServerPath := path.Join(helper.Configs.Server.Host, helper.Configs.Server.StaticFileServerPath, filepath)
+
+	helper.ResponseOkWithData(c, gin.H{
+		"filepath": filepath,         //数据库存储的文件路径
+		"url":      staticServerPath, //访问文件的url
+	})
 }

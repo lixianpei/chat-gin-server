@@ -13,9 +13,10 @@ func main() {
 	helper.InitChatDatabase()     //初始化DB
 	helper.InitWeiXin()           //初始化微信实例
 
-	engine := gin.Default()  //创建gin实例
-	router.InitRoute(engine) //初始化API路由
-	ws.InitWebsocket(engine) //初始化Ws
+	engine := gin.Default()                       //创建gin实例
+	router.InitRoute(engine)                      //初始化API路由
+	ws.InitWebsocket(engine)                      //初始化Ws
+	engine.Static("/static/uploads", "./uploads") //开启静态文件服务
 
 	//启动服务 TODO : 优雅启动
 	err := engine.Run(helper.Configs.Server.Address)

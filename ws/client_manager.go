@@ -64,8 +64,10 @@ func (manager *ClientManager) ClientRegister(client *Client) {
 	fmt.Println("EventClientRegister 用户建立连接：", client.userId)
 
 	//发送广播消息
-	helloMessage := NewMessageTextHello(fmt.Sprintf("欢迎“%s”进入聊天", client.userId))
+	helloMessage := NewEntryGroupMessage(fmt.Sprintf("欢迎“%s”进入聊天", client.userId))
 	manager.SendBroadcastMessage([]byte(helloMessage))
+
+	//发送消息给好友
 }
 
 // ClientUnregister 用户离线事件处理

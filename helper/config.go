@@ -40,8 +40,11 @@ type ConfigData struct {
 
 // 服务相关配置
 type configServer struct {
-	Address string
-	Env     string
+	Address              string
+	Env                  string
+	Host                 string
+	UploadFilePath       string
+	StaticFileServerPath string
 }
 
 // 数据库相关配置
