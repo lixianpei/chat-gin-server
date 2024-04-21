@@ -15,32 +15,25 @@ var LoginAuthUriWhiteList = map[string]bool{
 
 func LoginAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		//请求前
 		uri := c.Request.URL.Path
-		if _, ok := LoginAuthUriWhiteList[uri]; ok {
-			//白名单跳过验证
-			fmt.Println("白名单跳过验证", uri)
-			return
-		}
+		_, isWhiteList := LoginAuthUriWhiteList[uri]
 
 		//获取token
 		token := c.GetHeader("Authorization")
 		claims, err := helper.JwtParseChecking(token) // claims
-		if err != nil {
+		if err != nil && !isWhiteList {
 			fmt.Println("鉴权失败：", err.Error())
 			helper.ResponseError(c, err.Error())
 			c.Abort()
 			return
 		}
 
-		//鉴权通过，记录当前用户信息
-		c.Set(consts.UserId, claims.UserId)
-		c.Set(consts.UserNickname, claims.Nickname)
-		c.Set(consts.UserPhone, claims.Phone)
-
-		//fmt.Println("c.Get.GetInt64", c.GetInt64(consts.UserId))
-		//fmt.Println("c.Get.UserNickname", c.GetString(consts.UserNickname))
-		//fmt.Println("c.Get.UserPhone", c.GetString(consts.UserPhone))
+		//鉴权通过且存在值，记录当前用户信息
+		if claims != nil && claims.UserId > 0 {
+			c.Set(consts.UserId, claims.UserId)
+			c.Set(consts.UserNickname, claims.Nickname)
+			c.Set(consts.UserPhone, claims.Phone)
+		}
 
 		c.Next()
 	}

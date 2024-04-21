@@ -16,9 +16,7 @@ import (
 )
 
 type WxLoginForm struct {
-	Phone    string `form:"phone"`
-	Nickname string `form:"nickname"`
-	Code     string `form:"code" binding:"required"`
+	Code string `form:"code" binding:"required"`
 }
 
 // WxLogin 微信登录
@@ -40,10 +38,7 @@ func WxLogin(c *gin.Context) {
 	//查询用户是否存在
 	qUser := helper.Db.User
 	mUserInfo := &chat_model.User{}
-	err = helper.Db.WithContext(c).User.
-		Select(qUser.ID, qUser.UserName, qUser.Nickname).
-		Where(qUser.WxOpenid.Eq(wxResult.OpenId)).
-		Scan(mUserInfo)
+	err = helper.Db.WithContext(c).User.Where(qUser.WxOpenid.Eq(wxResult.OpenId)).Scan(mUserInfo)
 	if err != nil {
 		helper.ResponseError(c, err.Error())
 		return
@@ -69,20 +64,20 @@ func WxLogin(c *gin.Context) {
 		})
 	}
 
-	//生成token
-	token, err := helper.NewJwtToken(mUserInfo.ID, loginForm.Phone, loginForm.Nickname)
+	//生成token，此时还未获取到昵称和用户名
+	token, err := helper.NewJwtToken(mUserInfo.ID, "", "")
 	if err != nil {
 		helper.ResponseError(c, err.Error())
 		return
 	}
 
+	//处理头像
+	mUserInfo.Avatar = helper.GenerateStaticUrl(mUserInfo.Avatar)
+
 	helper.ResponseOkWithMessageData(c, gin.H{
-		"user_id":   mUserInfo.ID,
-		"token":     token,
-		"phone":     loginForm.Phone,
-		"nickname":  loginForm.Nickname,
-		"wxResult":  wxResult,
-		"mUserInfo": mUserInfo,
+		"user_id":  mUserInfo.ID,
+		"token":    token,
+		"userInfo": mUserInfo,
 	}, "ok")
 }
 
@@ -101,17 +96,28 @@ func PhoneLogin(c *gin.Context) {
 		return
 	}
 
-	//查询用户是否存在
 	qUser := helper.Db.User
 	mUserInfo := &chat_model.User{}
-	err = helper.Db.WithContext(c).User.
-		Select(qUser.ID, qUser.UserName, qUser.Nickname).
-		Where(qUser.Phone.Eq(loginForm.Phone)).
-		Scan(mUserInfo)
-	if err != nil {
-		helper.ResponseError(c, err.Error())
-		return
+
+	//若用户已提前使用微信登录，则此时已经存在token，可以获取到登录的用户信息
+	loginUser, err := service.User.GetLoginUser(c)
+
+	fmt.Println("loginUser...", loginUser)
+
+	if loginUser != nil {
+		mUserInfo = loginUser
+	} else {
+		//直接使用手机号进行登录：根据手机号查询用户是否存在
+		err = helper.Db.WithContext(c).User.
+			Select(qUser.ID, qUser.UserName, qUser.Nickname).
+			Where(qUser.Phone.Eq(loginForm.Phone)).
+			Scan(mUserInfo)
+		if err != nil {
+			helper.ResponseError(c, err.Error())
+			return
+		}
 	}
+
 	if mUserInfo.ID == 0 {
 		//创建新用户
 		mUserInfo = &chat_model.User{
@@ -128,6 +134,8 @@ func PhoneLogin(c *gin.Context) {
 		//保存信息数据
 		_, err = helper.Db.WithContext(c).User.Where(qUser.ID.Eq(mUserInfo.ID)).Updates(&chat_model.User{
 			Nickname: loginForm.Nickname,
+			Phone:    loginUser.Phone,
+			Avatar:   loginForm.Avatar,
 		})
 	}
 

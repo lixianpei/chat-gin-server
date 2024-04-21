@@ -13,6 +13,7 @@ var User = &user{}
 type user struct{}
 
 func (u *user) GetLoginUser(c *gin.Context) (*chat_model.User, error) {
+	fmt.Println("GetLoginUser..", c.GetInt64(consts.UserId))
 	//获取当前用户信息
 	qUser := helper.Db.User
 	mUser := chat_model.User{}
