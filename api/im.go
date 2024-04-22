@@ -352,14 +352,13 @@ func SendMessage(c *gin.Context) {
 	if len(messageUsers) > 0 {
 		for _, messageUser := range messageUsers {
 			message := ws.Message{
-				MessageId:    mMessage.ID,
-				Type:         ws.MessageTypeNormal,
-				Sender:       mUser.ID,
-				Receiver:     form.Receiver,
-				GroupId:      0,
-				Data:         form.Content,
-				Time:         time.Now().Local().Format(time.DateTime),
-				SenderAvatar: helper.GenerateStaticUrl(mUser.Avatar),
+				MessageId: mMessage.ID,
+				Type:      ws.MessageTypeNormal,
+				Sender:    mUser.ID,
+				Receiver:  form.Receiver,
+				GroupId:   0,
+				Data:      form.Content,
+				Time:      time.Now().Local().Format(time.DateTime),
 			}
 
 			messageJsonByte, err := json.Marshal(message)

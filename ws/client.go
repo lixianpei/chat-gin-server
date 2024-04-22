@@ -105,8 +105,6 @@ func (c *Client) readPump() {
 		}
 
 		//TODO 可根据消息类型进行判断是群消息还是私聊消息
-		fmt.Println("dddddddd", c.userId, string(message))
-
 		messageData, err := HandleMessageSave(string(message), c.userId)
 		if err != nil {
 			fmt.Println(fmt.Sprintf("客户端【%d】发送的消息解析错误：%s", c.userId, err.Error()))
@@ -259,9 +257,6 @@ func HandleMessageSave(wsMessage string, sender int64) (messageData Message, err
 		return messageData, fmt.Errorf("用戶不存在")
 	}
 
-	//生成消息的发送人的头像
-	messageData.SenderAvatar = helper.GenerateStaticUrl(mUser.Avatar)
-
 	//消息内容
 	mMessage := chat_model.Message{
 		Sender:  mUser.ID,
@@ -303,8 +298,13 @@ func HandleMessageSave(wsMessage string, sender int64) (messageData Message, err
 	if err != nil {
 		return messageData, err
 	}
-
+	messageData.Time = time.Now().Local().Format(time.DateTime) //TODO
 	messageData.MessageId = mMessage.ID
+	messageData.SenderInfo = mUser
+	messageData.SenderInfo.Avatar = helper.GenerateStaticUrl(mUser.Avatar) //生成消息的发送人的头像
+	messageData.SenderInfo.WxOpenid = ""
+	messageData.SenderInfo.WxUnionid = ""
+	messageData.SenderInfo.WxSessionKey = ""
 
 	////消息推入消息中心：
 	//if len(messageUsers) > 0 {

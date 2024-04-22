@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"GoChatServer/dal/model/chat_model"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -17,14 +18,14 @@ const (
 
 // Message 消息
 type Message struct {
-	MessageId    int64  `json:"message_id"`    //消息ID
-	Type         string `json:"type"`          //消息类型
-	Sender       int64  `json:"sender"`        //消息发送的用户ID
-	Receiver     int64  `json:"receiver"`      //消息接收的用户ID
-	GroupId      int64  `json:"group_id"`      //消息关联的群ID
-	Data         string `json:"content"`       //消息内容
-	Time         string `json:"time"`          //消息
-	SenderAvatar string `json:"sender_avatar"` //消息发送人的头像
+	MessageId  int64            `json:"message_id"` //消息ID
+	Type       string           `json:"type"`       //消息类型
+	Sender     int64            `json:"sender"`     //消息发送的用户ID
+	Receiver   int64            `json:"receiver"`   //消息接收的用户ID
+	GroupId    int64            `json:"group_id"`   //消息关联的群ID
+	Data       string           `json:"content"`    //消息内容
+	Time       string           `json:"time"`       //消息
+	SenderInfo *chat_model.User `json:"senderInfo"` //消息发送人信息 TODO 后期关键信息去掉
 }
 
 // ToString 对消息格式化
