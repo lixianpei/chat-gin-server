@@ -206,20 +206,26 @@ func (c *Client) writePump() {
 // serveWs handles websocket requests from the peer.
 func serveWs(manager *ClientManager, w http.ResponseWriter, r *http.Request) {
 	// 从请求头中获取认证信息
-	token := strings.TrimSpace(r.Header.Get("Authorization"))
+	token := strings.TrimSpace(r.Header.Get("token"))
 	if len(token) == 0 {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		helper.Logger.Error("token为空")
 		return
 	}
 	claims, err := helper.JwtParseChecking(token)
 	if err != nil {
+		helper.Logger.Error("token解析失败：" + token)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
 	//获取用户信息
 	userInfo, _ := service.User.GetUserById(claims.UserId)
-	fmt.Println("userInfo....serverWs...", userInfo)
+	if userInfo == nil || userInfo.ID == 0 {
+		helper.Logger.Infof("ws.获取用户[%d]失败", claims.UserId)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	conn, err := upGrader.Upgrade(w, r, nil)
 	if err != nil {
