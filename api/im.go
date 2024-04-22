@@ -39,6 +39,7 @@ func WxLogin(c *gin.Context) {
 	qUser := helper.Db.User
 	mUserInfo := &chat_model.User{}
 	err = helper.Db.WithContext(c).User.Where(qUser.WxOpenid.Eq(wxResult.OpenId)).Scan(mUserInfo)
+	fmt.Println(err, mUserInfo)
 	if err != nil {
 		helper.ResponseError(c, err.Error())
 		return

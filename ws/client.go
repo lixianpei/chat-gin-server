@@ -105,6 +105,7 @@ func (c *Client) readPump() {
 		}
 
 		//TODO 可根据消息类型进行判断是群消息还是私聊消息
+		fmt.Println("dddddddd", c.userId, string(message))
 
 		messageData, err := HandleMessageSave(string(message), c.userId)
 		if err != nil {

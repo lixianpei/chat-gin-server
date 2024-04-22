@@ -22,6 +22,7 @@ func InitChatDatabase() {
 		AllowNativePasswords: true, //设置allowNativePasswords=true，以启用 MySQL 数据库的原生密码认证方法
 		Loc:                  time.Now().Local().Location(),
 		ConnectionAttributes: "charset=utf8mb4",
+		ParseTime:            true, //自动解析time类型字段为字符串，若设置为false会报错：sql: Scan error on column index 9, name "created_at": unsupported Scan, storing driver.Value type []uint8 into type *time.Time
 	}
 
 	db, err := gorm.Open(mysql.New(mysql.Config{
