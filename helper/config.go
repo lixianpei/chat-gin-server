@@ -50,7 +50,7 @@ type configServer struct {
 // 数据库相关配置
 type configDb struct {
 	Host     string
-	Port     int
+	Port     string
 	User     string
 	Password string
 	Database string

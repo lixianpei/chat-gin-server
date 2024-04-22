@@ -81,11 +81,6 @@ func (w *weiXin) CheckWxSignature(rawData string, sessionKey string, signature s
 
 // DecodeWxData 解密微信数据
 func (w *weiXin) DecodeWxData(encryptedData string, sessionKey string, iv string) (decodeDataString string) {
-	// 从接口返回的数据
-	//encryptedData := "接口返回的加密数据"
-	//sessionKey := "接口返回的session_key"
-	//iv := "接口返回的iv"
-
 	// Base64 解码
 	encryptedBytes, err := base64.StdEncoding.DecodeString(encryptedData)
 	if err != nil {

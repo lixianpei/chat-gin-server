@@ -98,11 +98,8 @@ func PhoneLogin(c *gin.Context) {
 
 	qUser := helper.Db.User
 	mUserInfo := &chat_model.User{}
-
 	//若用户已提前使用微信登录，则此时已经存在token，可以获取到登录的用户信息
 	loginUser, err := service.User.GetLoginUser(c)
-
-	fmt.Println("loginUser...", loginUser)
 
 	if loginUser != nil {
 		mUserInfo = loginUser

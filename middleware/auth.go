@@ -13,7 +13,7 @@ var LoginAuthUriWhiteList = map[string]bool{
 	"/api/im/upload":     true,
 }
 
-func LoginAuth() gin.HandlerFunc {
+func LoginAuthHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		uri := c.Request.URL.Path
 		_, isWhiteList := LoginAuthUriWhiteList[uri]

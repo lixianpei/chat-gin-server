@@ -7,11 +7,15 @@ import (
 )
 
 func InitRoute(e *gin.Engine) {
+
+	//全局中间件
+	e.Use(middleware.RecoveryHandler())
+
 	//定义路由
 	apiRouter := e.Group("/api")
 	{
 		//鉴权中间件
-		apiRouter.Use(middleware.LoginAuth())
+		apiRouter.Use(middleware.LoginAuthHandler())
 
 		apiRouter.POST("/im/login", api.WxLogin)
 		apiRouter.POST("/im/phoneLogin", api.PhoneLogin)
