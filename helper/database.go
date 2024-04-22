@@ -12,6 +12,7 @@ var Db *chat_query.Query
 
 func InitChatDatabase() {
 	dbConfig := Configs.Db
+	//连接DB的结构体信息
 	DSNConfig := &mysql2.Config{
 		User:                 dbConfig.User,
 		Passwd:               dbConfig.Password,
@@ -22,9 +23,12 @@ func InitChatDatabase() {
 		Loc:                  time.Now().Local().Location(),
 		ConnectionAttributes: "charset=utf8mb4",
 	}
+
 	db, err := gorm.Open(mysql.New(mysql.Config{
 		DSNConfig: DSNConfig,
-	}), &gorm.Config{})
+	}), &gorm.Config{
+		Logger: SqlGormLogger, //定义一个日志接收器
+	})
 	if err != nil {
 		Logger.Error("数据库初始化失败：", err.Error())
 		return

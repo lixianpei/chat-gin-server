@@ -13,3 +13,9 @@ const (
 	UserPhone    = "JwtUserPhone"
 	UserNickname = "JwtUserNickname"
 )
+
+// 链路跟踪
+const (
+	TraceId  = "traceId"
+	TraceSql = "traceSql"
+)

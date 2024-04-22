@@ -32,8 +32,6 @@ func NewJwtToken(userId int64, phone string, nickname string) (string, error) {
 		},
 	}
 
-	fmt.Println("NewJwtToken...", userId, phone, nickname)
-
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(mySigningKey)
 }

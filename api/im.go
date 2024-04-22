@@ -131,7 +131,7 @@ func PhoneLogin(c *gin.Context) {
 		//保存信息数据
 		_, err = helper.Db.WithContext(c).User.Where(qUser.ID.Eq(mUserInfo.ID)).Updates(&chat_model.User{
 			Nickname: loginForm.Nickname,
-			Phone:    loginUser.Phone,
+			Phone:    loginForm.Phone,
 			Avatar:   loginForm.Avatar,
 		})
 	}

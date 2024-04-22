@@ -1,72 +1,80 @@
 package helper
 
 import (
+	"GoChatServer/consts"
 	"github.com/gin-gonic/gin"
 	"net/http"
 )
 
 const (
 	ResponseCodeOk    = 200 //返回成功
-	ResponseCodeError = 400 //Token解析错误
+	ResponseCodeError = 400 //错误
 	ResponseCodeLogin = 2   //普通错误
 )
 
+type responseData struct {
+	Code     int         `json:"code"`
+	Message  string      `json:"message"`
+	Data     interface{} `json:"data"`
+	TraceId  string      `json:"trace_id"`
+	TraceSql []string    `json:"trace_sql"`
+}
+
+func response(c *gin.Context, result *responseData) {
+	//DEBUG调试
+	result.TraceId = c.GetString(consts.TraceId)
+	result.TraceSql = c.GetStringSlice(consts.TraceSql)
+	c.JSON(http.StatusOK, result)
+	c.Abort()
+}
+
 // ResponseOk 返回成功
 func ResponseOk(c *gin.Context) {
-	c.JSON(http.StatusOK, gin.H{
-		"code":    ResponseCodeOk,
-		"message": "success",
-		"data":    gin.H{},
+	response(c, &responseData{
+		Code:    ResponseCodeOk,
+		Message: "ok",
 	})
-	c.Abort()
 }
 
 // ResponseOkWithData 返回成功-携带数据
 func ResponseOkWithData(c *gin.Context, data interface{}) {
-	c.JSON(http.StatusOK, gin.H{
-		"code":    ResponseCodeOk,
-		"message": "success",
-		"data":    data,
+	response(c, &responseData{
+		Code:    ResponseCodeOk,
+		Message: "ok",
+		Data:    data,
 	})
-	c.Abort()
 }
 
 // ResponseOkWithMessage 返回成功-携带成功消息
 func ResponseOkWithMessage(c *gin.Context, message string) {
-	c.JSON(http.StatusOK, gin.H{
-		"code":    ResponseCodeOk,
-		"message": message,
-		"data":    gin.H{},
+	response(c, &responseData{
+		Code:    ResponseCodeOk,
+		Message: message,
 	})
-	c.Abort()
 }
 
 // ResponseOkWithMessageData 返回成功-携带成功消息和数据
 func ResponseOkWithMessageData(c *gin.Context, data interface{}, message string) {
-	c.JSON(http.StatusOK, gin.H{
-		"code":    ResponseCodeOk,
-		"message": message,
-		"data":    data,
+	response(c, &responseData{
+		Code:    ResponseCodeOk,
+		Message: message,
+		Data:    data,
 	})
-	c.Abort()
 }
 
 // ResponseError 返回错误-携带错误消息
 func ResponseError(c *gin.Context, message string) {
-	c.JSON(http.StatusOK, gin.H{
-		"code":    ResponseCodeError,
-		"message": message,
-		"data":    gin.H{},
+	response(c, &responseData{
+		Code:    ResponseCodeError,
+		Message: message,
 	})
-	c.Abort()
 }
 
 // ResponseErrorWithData 返回错误-携带错误消息和数据
 func ResponseErrorWithData(c *gin.Context, message string, data interface{}) {
-	c.JSON(http.StatusOK, gin.H{
-		"code":    ResponseCodeError,
-		"message": message,
-		"data":    data,
+	response(c, &responseData{
+		Code:    ResponseCodeError,
+		Message: message,
+		Data:    data,
 	})
-	c.Abort()
 }

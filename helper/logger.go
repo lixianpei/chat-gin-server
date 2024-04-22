@@ -10,19 +10,21 @@ import (
 	"time"
 )
 
-var Logger *logrus.Logger
+var Logger = &logger{}
 
-func InitLogger() {
-	Logger = newLogger()
+type logger struct {
+	//cxt *gin.Context
+	*logrus.Logger
 }
 
-// newLogger 实例化Logger
-func newLogger() *logrus.Logger {
-	log := logrus.New()
+func InitLogger() {
+	log := &logger{}
+	//log.cxt = c
+	log.Logger = logrus.New()
 	log.SetReportCaller(true)
 	log.SetFormatter(&MyFormatter{})
 	log.AddHook(&CustomLogFile{})
-	return log
+	Logger = log
 }
 
 // MyFormatter ================= 自定义日志内容格式 =================
@@ -35,6 +37,10 @@ func (m *MyFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	} else {
 		b = &bytes.Buffer{}
 	}
+	traceId, ok := entry.Data[consts.TraceId]
+	if !ok {
+		traceId = ""
+	}
 
 	timestamp := entry.Time.Local().Format("2006-01-02 15:04:05.000")
 	var newLog string
@@ -42,10 +48,10 @@ func (m *MyFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	//HasCaller()为true才会有调用信息
 	if entry.HasCaller() {
 		fName := filepath.Base(entry.Caller.File)
-		newLog = fmt.Sprintf("[%s][%s][%s:%d %s][%s]\n",
-			timestamp, entry.Level, fName, entry.Caller.Line, entry.Caller.Function, entry.Message)
+		newLog = fmt.Sprintf("[%s][%s][%s][%s:%d %s][%s]\n",
+			timestamp, traceId, entry.Level, fName, entry.Caller.Line, entry.Caller.Function, entry.Message)
 	} else {
-		newLog = fmt.Sprintf("[%s][%s][%s]\n", timestamp, entry.Level, entry.Message)
+		newLog = fmt.Sprintf("[%s][%s][%s][%s]\n", timestamp, traceId, entry.Level, entry.Message)
 	}
 
 	b.WriteString(newLog)
