@@ -19,7 +19,7 @@ func LoginAuthHandler() gin.HandlerFunc {
 		_, isWhiteList := LoginAuthUriWhiteList[uri]
 
 		//获取token
-		token := c.GetHeader("Authorization")
+		token := c.GetHeader("token")
 		claims, err := helper.JwtParseChecking(token) // claims
 		if err != nil && !isWhiteList {
 			fmt.Println("鉴权失败：", err.Error())
