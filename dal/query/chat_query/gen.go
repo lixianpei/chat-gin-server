@@ -20,6 +20,7 @@ var (
 	Message     *message
 	MessageUser *messageUser
 	User        *user
+	UserContact *userContact
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
@@ -27,6 +28,7 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	Message = &Q.Message
 	MessageUser = &Q.MessageUser
 	User = &Q.User
+	UserContact = &Q.UserContact
 }
 
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
@@ -35,6 +37,7 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 		Message:     newMessage(db, opts...),
 		MessageUser: newMessageUser(db, opts...),
 		User:        newUser(db, opts...),
+		UserContact: newUserContact(db, opts...),
 	}
 }
 
@@ -44,6 +47,7 @@ type Query struct {
 	Message     message
 	MessageUser messageUser
 	User        user
+	UserContact userContact
 }
 
 func (q *Query) Available() bool { return q.db != nil }
@@ -54,6 +58,7 @@ func (q *Query) clone(db *gorm.DB) *Query {
 		Message:     q.Message.clone(db),
 		MessageUser: q.MessageUser.clone(db),
 		User:        q.User.clone(db),
+		UserContact: q.UserContact.clone(db),
 	}
 }
 
@@ -71,6 +76,7 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 		Message:     q.Message.replaceDB(db),
 		MessageUser: q.MessageUser.replaceDB(db),
 		User:        q.User.replaceDB(db),
+		UserContact: q.UserContact.replaceDB(db),
 	}
 }
 
@@ -78,6 +84,7 @@ type queryCtx struct {
 	Message     IMessageDo
 	MessageUser IMessageUserDo
 	User        IUserDo
+	UserContact IUserContactDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
@@ -85,6 +92,7 @@ func (q *Query) WithContext(ctx context.Context) *queryCtx {
 		Message:     q.Message.WithContext(ctx),
 		MessageUser: q.MessageUser.WithContext(ctx),
 		User:        q.User.WithContext(ctx),
+		UserContact: q.UserContact.WithContext(ctx),
 	}
 }
 

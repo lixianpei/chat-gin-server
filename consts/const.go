@@ -19,3 +19,10 @@ const (
 	TraceId  = "traceId"
 	TraceSql = "traceSql"
 )
+
+// 好友关系
+const (
+	UserFriendStatusIsApplying = 1 //好友申请中
+	UserFriendStatusIsFriend   = 2 //好友
+	UserFriendStatusIsReject   = 3 //拒绝
+)

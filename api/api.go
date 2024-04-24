@@ -374,3 +374,101 @@ func SendMessage(c *gin.Context) {
 		"message_id": mMessage.ID,
 	})
 }
+
+type SearchUserForm struct {
+	Keyword string `form:"keyword" binding:"required"`
+}
+
+func SearchUser(c *gin.Context) {
+	var form SearchUserForm
+	if err := c.ShouldBind(&form); err != nil {
+		helper.ResponseError(c, "参数错误")
+		return
+	}
+	qUser := helper.Db.User
+	mUser := chat_model.User{}
+	err := qUser.WithContext(c).
+		Select(qUser.ID, qUser.UserName, qUser.Nickname, qUser.Phone, qUser.Avatar, qUser.Gender).
+		Where(
+			qUser.Where(
+				qUser.Phone.Like(fmt.Sprintf("%%%s%%", form.Keyword))).
+				Or(qUser.Nickname.Like(fmt.Sprintf("%%%s%%", form.Keyword))),
+		).Scan(&mUser)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+	if mUser.ID == 0 {
+		helper.ResponseOkWithData(c, gin.H{})
+		return
+	}
+	mUser.Avatar = helper.GenerateStaticUrl(mUser.Avatar)
+	helper.ResponseOkWithData(c, mUser)
+}
+
+type AddFriendForm struct {
+	UserId int64 `form:"user_id" binding:"required"`
+}
+
+func AddFriend(c *gin.Context) {
+	var form AddFriendForm
+	if err := c.ShouldBind(&form); err != nil {
+		helper.ResponseError(c, "参数错误2")
+		return
+	}
+
+	//当前用户
+	user, err := service.User.GetLoginUser(c)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	//申请添加的好友
+	friend, err := service.User.GetUserById(form.UserId)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	//查询好友关系
+	//contact
+	qContact := helper.Db.UserContact
+	mContact := chat_model.UserContact{}
+	err = qContact.Where(
+		qContact.Where(qContact.UserID.Eq(user.ID)).Or().Where(qContact.FriendUserID.Eq(friend.ID)),
+		qContact.Where(qContact.FriendUserID.Eq(user.ID)).Or().Where(qContact.UserID.Eq(friend.ID)),
+	).Scan(&mContact)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+	if mContact.Status == consts.UserFriendStatusIsFriend {
+		helper.ResponseError(c, "已经是好友了，无需重复添加")
+		return
+	}
+	if mContact.UserID == user.ID && mContact.Status == consts.UserFriendStatusIsApplying {
+		helper.ResponseError(c, "您已经申请添加对方为好友，请勿重复操作，请耐心等待您的好友同意")
+		return
+	}
+	if mContact.FriendUserID == user.ID && mContact.Status == consts.UserFriendStatusIsApplying {
+		//同意对方的申请添加好友
+		_, err = qContact.WithContext(c).Select(qContact.Status).Where(qContact.ID.Eq(mContact.ID)).Update(qContact.Status, consts.UserFriendStatusIsFriend)
+		if err != nil {
+			helper.ResponseError(c, err.Error())
+			return
+		}
+	}
+	//添加好友申请
+	err = qContact.WithContext(c).Select(qContact.UserID, qContact.FriendUserID, qContact.Status).Create(&chat_model.UserContact{
+		UserID:       user.ID,
+		FriendUserID: friend.ID,
+		Status:       consts.UserFriendStatusIsApplying,
+	})
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+	helper.ResponseOkWithMessage(c, "添加好友处理成功，请耐心等待您的好友同意")
+
+}

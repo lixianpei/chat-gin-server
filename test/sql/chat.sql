@@ -38,5 +38,16 @@ CREATE TABLE `message_user` (
                                 PRIMARY KEY (`id`),
                                 KEY `idx_message_id` (`message_id`),
                                 KEY `idx_sender` (`receiver`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息-用户'
-;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息-用户';
+
+CREATE TABLE `user_contact` (
+                                `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增',
+                                `user_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '用户1-申请人',
+                                `friend_user_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '用户2-被申请添加好友的人',
+                                `status` tinyint(2) unsigned NOT NULL DEFAULT '0' COMMENT '1-申请中；2-好友；3-拒绝；',
+                                `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                                `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
+                                PRIMARY KEY (`id`),
+                                KEY `idx_user` (`user_id`,`friend_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户联系人';

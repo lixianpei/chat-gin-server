@@ -35,5 +35,7 @@ func InitRoute(e *gin.Engine) {
 		apiRouter.POST("/im/userInfoSave", api.UserInfoSave)
 		apiRouter.POST("/im/getOnlineList", api.GetOnlineList)
 		apiRouter.POST("/im/upload", api.UploadFile)
+		apiRouter.POST("/im/searchUser", api.SearchUser)
+		apiRouter.POST("/im/addFriend", api.AddFriend)
 	}
 }

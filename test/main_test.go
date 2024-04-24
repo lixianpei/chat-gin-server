@@ -11,6 +11,7 @@ import (
 func TestMain(m *testing.M) {
 	// 初始化配置
 	helper.InitConfig("../config")
+	helper.InitLogger()
 
 	helper.InitChatDatabase()
 
