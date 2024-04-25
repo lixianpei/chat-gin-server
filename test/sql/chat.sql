@@ -1,9 +1,9 @@
--- TRUNCATE TABLE message;
--- TRUNCATE TABLE message_user;
--- TRUNCATE TABLE `user`;
--- TRUNCATE TABLE user_contact;
--- TRUNCATE TABLE chat;
--- TRUNCATE TABLE chat_user;
+DROP TABLE `user`;
+DROP TABLE message;
+DROP TABLE message_user;
+DROP TABLE user_contact;
+DROP TABLE `group`;
+DROP TABLE `group_user`;
 
 CREATE TABLE `user` (
                         `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增',
@@ -61,28 +61,28 @@ CREATE TABLE `user_contact` (
                                 KEY `idx_user` (`user_id`,`friend_user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户联系人';
 
-CREATE TABLE `chat` (
-                        `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '自增',
-                        `title` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '聊天标题：群聊为群名称、私聊为空、其他特殊聊天标题',
-                        `type` VARCHAR(128) NOT NULL DEFAULT '' COMMENT '单聊-singleChat、群聊-groupChat、系统通知-systemNotify',
-                        `user_count` INT(11) NOT NULL DEFAULT '0' COMMENT '订阅的用户总数',
-                        `online_user_count` INT(11) NOT NULL DEFAULT '0' COMMENT '在线用户总数',
-                        `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-                        `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-                        `deleted_at` DATETIME DEFAULT NULL COMMENT '删除时间',
-                        PRIMARY KEY (`id`)
-) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='聊天';
+CREATE TABLE `group` (
+                         `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '自增',
+                         `title` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '群聊名称',
+                         `user_count` INT(11) NOT NULL DEFAULT '0' COMMENT '群聊用户总数',
+                         `created_user_id` BIGINT(20) UNSIGNED NOT NULL DEFAULT 0 COMMENT '群创建的用户ID',
+                         `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                         `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                         `deleted_at` DATETIME DEFAULT NULL COMMENT '删除时间',
+                         PRIMARY KEY (`id`)
+) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='聊天群';
 
-CREATE TABLE `chat_user` (
-                             `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '自增',
-                             `user_id` BIGINT(20) UNSIGNED NOT NULL DEFAULT 0 COMMENT '用户ID',
-                             `chat_id` BIGINT(20) UNSIGNED NOT NULL DEFAULT 0 COMMENT '聊天ID',
-                             `custom_title` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '用户自定义标题',
-                             `is_message_remind` TINYINT(2) NOT NULL DEFAULT 0 COMMENT '是否消息提醒：1-提醒；2-免打扰；',
-                             `is_top` TINYINT(2) NOT NULL DEFAULT 0 COMMENT '是否消息提醒：1-提醒；2-免打扰；',
-                             `is_top_time` DATETIME DEFAULT NULL COMMENT '设置置顶时间',
-                             `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-                             `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-                             `deleted_at` DATETIME DEFAULT NULL COMMENT '删除时间',
-                             PRIMARY KEY (`id`)
-) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='聊天用户';
+CREATE TABLE `group_user` (
+                              `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '自增',
+                              `user_id` BIGINT(20) UNSIGNED NOT NULL DEFAULT 0 COMMENT '用户ID',
+                              `group_id` BIGINT(20) UNSIGNED NOT NULL DEFAULT 0 COMMENT '聊天ID',
+                              `custom_group_title` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '自定义群 标题',
+                              `custom_nickname` VARCHAR(32) NOT NULL DEFAULT '' COMMENT '自定义个人在群的昵称',
+                              `is_message_remind` TINYINT(2) NOT NULL DEFAULT 0 COMMENT '是否消息提醒：1-提醒；2-免打扰；',
+                              `is_top` TINYINT(2) NOT NULL DEFAULT 0 COMMENT '是否消息提醒：1-提醒；2-免打扰；',
+                              `is_top_time` DATETIME DEFAULT NULL COMMENT '设置置顶时间',
+                              `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                              `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                              `deleted_at` DATETIME DEFAULT NULL COMMENT '删除时间',
+                              PRIMARY KEY (`id`)
+) ENGINE=INNODB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='聊天群用户';

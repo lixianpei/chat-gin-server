@@ -521,3 +521,114 @@ func GetFriendContact(c *gin.Context) {
 	friends, err := service.User.GetFriendContact(mUser.ID)
 	helper.ResponseOkWithData(c, friends)
 }
+
+type CreateGroupForm struct {
+	Title string `form:"title" json:"title" binding:"required"`
+}
+
+func CreateGroup(c *gin.Context) {
+	var form CreateGroupForm
+	if err := c.ShouldBind(&form); err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	mUser, err := service.User.GetLoginUser(c)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	mGroup := chat_model.Group{
+		Title:         form.Title,
+		CreatedUserID: mUser.ID,
+	}
+	err = helper.Db.Transaction(func(tx *chat_query.Query) error {
+		qG := tx.Group
+		err = qG.WithContext(c).Select(qG.Title, qG.CreatedUserID).Create(&mGroup)
+		if err != nil {
+			return err
+		}
+
+		qGu := tx.GroupUser
+		err = qGu.WithContext(c).Select(qGu.GroupID, qGu.UserID, qGu.IsMessageRemind).Create(&chat_model.GroupUser{
+			UserID:          mUser.ID,
+			GroupID:         mGroup.ID,
+			IsMessageRemind: 1,
+		})
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+	helper.ResponseOkWithData(c, gin.H{
+		"group_id": mUser.ID,
+	})
+}
+
+type AddGroupUserForm struct {
+	GroupId int64   `form:"group_id" json:"group_id" binding:"required"`
+	UserIds []int64 `form:"user_ids" json:"user_ids" binding:"required"`
+}
+
+func AddGroupUser(c *gin.Context) {
+	var form AddGroupUserForm
+	if err := c.ShouldBind(&form); err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	mUser, err := service.User.GetLoginUser(c)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	var group chat_model.Group
+	qGroup := helper.Db.Group
+	err = qGroup.WithContext(c).Where(qGroup.ID.Eq(form.GroupId)).Scan(&group)
+	if err != nil || group.ID == 0 {
+		helper.ResponseError(c, "聊天群信息错误")
+		return
+	}
+
+	err = helper.Db.Transaction(func(tx *chat_query.Query) error {
+		qUser := tx.User
+		qGroupUser := tx.GroupUser
+		users := make([]*chat_model.User, 0)
+		err = qUser.WithContext(c).
+			Select(qUser.ID).
+			LeftJoin(qGroupUser, qGroupUser.UserID.EqCol(qUser.ID)).
+			Where(qGroupUser.GroupID.Eq(form.GroupId)).
+			Where(qUser.ID.In(form.UserIds...)).
+			Where(qGroupUser.ID.IsNull()).
+			Scan(&users)
+
+		mGroupUsers := make([]*chat_model.GroupUser, 0)
+		for _, u := range users {
+			mGroupUsers = append(mGroupUsers, &chat_model.GroupUser{
+				UserID:          u.ID,
+				GroupID:         form.GroupId,
+				IsMessageRemind: 1,
+			})
+		}
+
+		qGu := tx.GroupUser
+		err = qGu.WithContext(c).Select(qGu.GroupID, qGu.UserID, qGu.IsMessageRemind).Create(mGroupUsers...)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+	helper.ResponseOk(c)
+}
+
+//[mysql] 2024/04/25 21:57:16 connection.go:49: read tcp 127.0.0.1:62820->127.0.0.1:3306: wsarecv: An established connection was aborted by the software in your host machine.

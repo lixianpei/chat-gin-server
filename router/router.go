@@ -38,5 +38,7 @@ func InitRoute(e *gin.Engine) {
 		apiRouter.POST("/im/searchUser", api.SearchUser)
 		apiRouter.POST("/im/addFriend", api.ApplyFriend)
 		apiRouter.POST("/im/getFriendContact", api.GetFriendContact)
+		apiRouter.POST("/im/createGroup", api.CreateGroup)
+		apiRouter.POST("/im/addGroupUser", api.AddGroupUser)
 	}
 }

@@ -17,6 +17,8 @@ import (
 
 var (
 	Q           = new(Query)
+	Group       *group
+	GroupUser   *groupUser
 	Message     *message
 	MessageUser *messageUser
 	User        *user
@@ -25,6 +27,8 @@ var (
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
+	Group = &Q.Group
+	GroupUser = &Q.GroupUser
 	Message = &Q.Message
 	MessageUser = &Q.MessageUser
 	User = &Q.User
@@ -34,6 +38,8 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:          db,
+		Group:       newGroup(db, opts...),
+		GroupUser:   newGroupUser(db, opts...),
 		Message:     newMessage(db, opts...),
 		MessageUser: newMessageUser(db, opts...),
 		User:        newUser(db, opts...),
@@ -44,6 +50,8 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 type Query struct {
 	db *gorm.DB
 
+	Group       group
+	GroupUser   groupUser
 	Message     message
 	MessageUser messageUser
 	User        user
@@ -55,6 +63,8 @@ func (q *Query) Available() bool { return q.db != nil }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:          db,
+		Group:       q.Group.clone(db),
+		GroupUser:   q.GroupUser.clone(db),
 		Message:     q.Message.clone(db),
 		MessageUser: q.MessageUser.clone(db),
 		User:        q.User.clone(db),
@@ -73,6 +83,8 @@ func (q *Query) WriteDB() *Query {
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:          db,
+		Group:       q.Group.replaceDB(db),
+		GroupUser:   q.GroupUser.replaceDB(db),
 		Message:     q.Message.replaceDB(db),
 		MessageUser: q.MessageUser.replaceDB(db),
 		User:        q.User.replaceDB(db),
@@ -81,6 +93,8 @@ func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 }
 
 type queryCtx struct {
+	Group       IGroupDo
+	GroupUser   IGroupUserDo
 	Message     IMessageDo
 	MessageUser IMessageUserDo
 	User        IUserDo
@@ -89,6 +103,8 @@ type queryCtx struct {
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
+		Group:       q.Group.WithContext(ctx),
+		GroupUser:   q.GroupUser.WithContext(ctx),
 		Message:     q.Message.WithContext(ctx),
 		MessageUser: q.MessageUser.WithContext(ctx),
 		User:        q.User.WithContext(ctx),
