@@ -16,7 +16,7 @@ import (
 )
 
 type WxLoginForm struct {
-	Code string `form:"code" binding:"required"`
+	Code string `form:"code" json:"code" binding:"required"`
 }
 
 // WxLogin 微信登录
@@ -83,9 +83,9 @@ func WxLogin(c *gin.Context) {
 }
 
 type PhoneLoginForm struct {
-	Phone    string `form:"phone" binding:"required"`
-	Nickname string `form:"nickname" binding:"required"`
-	Avatar   string `form:"avatar"`
+	Phone    string `form:"phone" json:"phone" binding:"required"`
+	Nickname string `form:"nickname" json:"nickname" binding:"required"`
+	Avatar   string `form:"avatar" json:"avatar"`
 }
 
 // PhoneLogin 手机号登录
@@ -153,10 +153,10 @@ func PhoneLogin(c *gin.Context) {
 }
 
 type WxUserInfoForm struct {
-	EncryptedData string `form:"encryptedData"`
-	RawData       string `form:"rawData"`
-	Signature     string `form:"signature"`
-	Iv            string `form:"iv"`
+	EncryptedData string `form:"encryptedData" json:"encryptedData"`
+	RawData       string `form:"rawData" json:"rawData"`
+	Signature     string `form:"signature" json:"signature"`
+	Iv            string `form:"iv" json:"iv"`
 }
 type WxUserInfoData struct {
 	Openid    string `json:"openid"`
@@ -217,9 +217,9 @@ func WxUserInfoSave(c *gin.Context) {
 }
 
 type UserAvatarForm struct {
-	Avatar   string `form:"avatar"`
-	Nickname string `form:"nickname"`
-	Phone    string `form:"phone"`
+	Avatar   string `form:"avatar" json:"avatar"`
+	Nickname string `form:"nickname" json:"nickname"`
+	Phone    string `form:"phone" json:"phone"`
 }
 
 // UserInfoSave 微信头像存储-头像为临时头像，暂时不需要此接口
@@ -287,8 +287,8 @@ func UploadFile(c *gin.Context) {
 
 type SendMessageForm struct {
 	//Type     string `form:"type" binding:"required"`//消息类型
-	Content  string `form:"content" binding:"required"`  //消息类型
-	Receiver int64  `form:"receiver" binding:"required"` //消息接收的用户ID
+	Content  string `form:"content" json:"content" binding:"required"`   //消息类型
+	Receiver int64  `form:"receiver" json:"receiver" binding:"required"` //消息接收的用户ID
 }
 
 func SendMessage(c *gin.Context) {
@@ -376,7 +376,7 @@ func SendMessage(c *gin.Context) {
 }
 
 type SearchUserForm struct {
-	Keyword string `form:"keyword" binding:"required"`
+	Keyword string `form:"keyword" json:"keyword" binding:"required"`
 }
 
 func SearchUser(c *gin.Context) {
@@ -406,14 +406,15 @@ func SearchUser(c *gin.Context) {
 	helper.ResponseOkWithData(c, mUser)
 }
 
-type AddFriendForm struct {
-	UserId int64 `form:"user_id" binding:"required"`
+type ApplyFriendForm struct {
+	UserId int64 `form:"userId" json:"userId" binding:"required"`
+	Status int   `form:"status" json:"status" binding:"oneof=2 3"`
 }
 
-func AddFriend(c *gin.Context) {
-	var form AddFriendForm
+func ApplyFriend(c *gin.Context) {
+	var form ApplyFriendForm
 	if err := c.ShouldBind(&form); err != nil {
-		helper.ResponseError(c, "参数错误2")
+		helper.ResponseError(c, "参数错误:"+err.Error())
 		return
 	}
 
@@ -430,14 +431,16 @@ func AddFriend(c *gin.Context) {
 		helper.ResponseError(c, err.Error())
 		return
 	}
+	if user.ID == friend.ID {
+		helper.ResponseError(c, "不能添加自己为好友")
+		return
+	}
 
 	//查询好友关系
-	//contact
 	qContact := helper.Db.UserContact
 	mContact := chat_model.UserContact{}
-	err = qContact.Where(
-		qContact.Where(qContact.UserID.Eq(user.ID)).Or().Where(qContact.FriendUserID.Eq(friend.ID)),
-		qContact.Where(qContact.FriendUserID.Eq(user.ID)).Or().Where(qContact.UserID.Eq(friend.ID)),
+	err = qContact.WithContext(c).Where(
+		qContact.Where(qContact.Where(qContact.UserID.Eq(user.ID), qContact.FriendUserID.Eq(friend.ID))).Or(qContact.Where(qContact.FriendUserID.Eq(user.ID), qContact.UserID.Eq(friend.ID))),
 	).Scan(&mContact)
 	if err != nil {
 		helper.ResponseError(c, err.Error())
@@ -452,23 +455,24 @@ func AddFriend(c *gin.Context) {
 		return
 	}
 	if mContact.FriendUserID == user.ID && mContact.Status == consts.UserFriendStatusIsApplying {
-		//同意对方的申请添加好友
-		_, err = qContact.WithContext(c).Select(qContact.Status).Where(qContact.ID.Eq(mContact.ID)).Update(qContact.Status, consts.UserFriendStatusIsFriend)
+		//同意对方的申请添加好友|拒绝好友申请
+		_, err = qContact.WithContext(c).Select(qContact.Status).Where(qContact.ID.Eq(mContact.ID)).Update(qContact.Status, form.Status)
+		if err != nil {
+			helper.ResponseError(c, err.Error())
+			return
+		}
+
+	} else {
+		//添加好友申请
+		err = qContact.WithContext(c).Select(qContact.UserID, qContact.FriendUserID, qContact.Status).Create(&chat_model.UserContact{
+			UserID:       user.ID,
+			FriendUserID: friend.ID,
+			Status:       consts.UserFriendStatusIsApplying,
+		})
 		if err != nil {
 			helper.ResponseError(c, err.Error())
 			return
 		}
 	}
-	//添加好友申请
-	err = qContact.WithContext(c).Select(qContact.UserID, qContact.FriendUserID, qContact.Status).Create(&chat_model.UserContact{
-		UserID:       user.ID,
-		FriendUserID: friend.ID,
-		Status:       consts.UserFriendStatusIsApplying,
-	})
-	if err != nil {
-		helper.ResponseError(c, err.Error())
-		return
-	}
-	helper.ResponseOkWithMessage(c, "添加好友处理成功，请耐心等待您的好友同意")
-
+	helper.ResponseOk(c)
 }
