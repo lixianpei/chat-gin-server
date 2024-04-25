@@ -119,9 +119,11 @@ func PhoneLogin(c *gin.Context) {
 	if mUserInfo.ID == 0 {
 		//创建新用户
 		mUserInfo = &chat_model.User{
-			Phone:    loginForm.Phone,
-			Nickname: loginForm.Nickname,
-			Avatar:   loginForm.Avatar,
+			Phone:         loginForm.Phone,
+			Nickname:      loginForm.Nickname,
+			Avatar:        loginForm.Avatar,
+			LastLoginIP:   c.ClientIP(),
+			LastLoginTime: time.Now().Local(),
 		}
 		err = helper.Db.WithContext(c).User.Create(mUserInfo)
 		if err != nil {
@@ -131,9 +133,11 @@ func PhoneLogin(c *gin.Context) {
 	} else {
 		//保存信息数据
 		_, err = helper.Db.WithContext(c).User.Where(qUser.ID.Eq(mUserInfo.ID)).Updates(&chat_model.User{
-			Nickname: loginForm.Nickname,
-			Phone:    loginForm.Phone,
-			Avatar:   loginForm.Avatar,
+			Nickname:      loginForm.Nickname,
+			Phone:         loginForm.Phone,
+			Avatar:        loginForm.Avatar,
+			LastLoginIP:   c.ClientIP(),
+			LastLoginTime: time.Now().Local(),
 		})
 	}
 
@@ -454,13 +458,35 @@ func ApplyFriend(c *gin.Context) {
 		helper.ResponseError(c, "您已经申请添加对方为好友，请勿重复操作，请耐心等待您的好友同意")
 		return
 	}
-	if mContact.FriendUserID == user.ID && mContact.Status == consts.UserFriendStatusIsApplying {
-		//同意对方的申请添加好友|拒绝好友申请
-		_, err = qContact.WithContext(c).Select(qContact.Status).Where(qContact.ID.Eq(mContact.ID)).Update(qContact.Status, form.Status)
+
+	notifyMessage := ws.Message{
+		Type:     ws.MessageTypeAddFriend,
+		Sender:   user.ID,
+		Receiver: friend.ID,
+		Data:     "",
+	}
+	if mContact.ID > 0 && mContact.Status == consts.UserFriendStatusIsApplying {
+		//存在申请中的记录视为在处理好友的申请
+		if form.Status == consts.UserFriendStatusIsReject {
+			//拒绝好友申请，直接删除关联数据，就是这么简单粗暴！！！
+			_, err = qContact.WithContext(c).Where(qContact.ID.Eq(mContact.ID)).Delete()
+		} else {
+			//同意对方的申请添加好友
+			_, err = qContact.WithContext(c).Select(qContact.Status).Where(qContact.ID.Eq(mContact.ID)).Update(qContact.Status, form.Status)
+		}
 		if err != nil {
 			helper.ResponseError(c, err.Error())
 			return
 		}
+		//发送通知给申请加好友的用户
+		var statusDesc string
+		switch form.Status {
+		case consts.UserFriendStatusIsFriend:
+			statusDesc = "已同意添加为好友"
+		case consts.UserFriendStatusIsReject:
+			statusDesc = "已拒绝添加为好友"
+		}
+		notifyMessage.Data = fmt.Sprintf("您申请添加用户【%s】为好友的请求处理完成：%s", friend.Nickname, statusDesc)
 
 	} else {
 		//添加好友申请
@@ -473,6 +499,25 @@ func ApplyFriend(c *gin.Context) {
 			helper.ResponseError(c, err.Error())
 			return
 		}
+		//发送通知给被加好友的用户
+		notifyMessage.Data = fmt.Sprintf("用户【%s】请求添加您为好友", user.Nickname)
 	}
+
+	//消息通知
+	notifyMessageJson, _ := json.Marshal(&notifyMessage)
+	_, _ = ws.HandleMessageSaveAndSend(string(notifyMessageJson), user.ID)
+
 	helper.ResponseOk(c)
+}
+
+// GetFriendContact 获取好友联系人
+func GetFriendContact(c *gin.Context) {
+	mUser, err := service.User.GetLoginUser(c)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	friends, err := service.User.GetFriendContact(mUser.ID)
+	helper.ResponseOkWithData(c, friends)
 }

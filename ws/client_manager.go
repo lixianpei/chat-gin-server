@@ -101,10 +101,10 @@ func (manager *ClientManager) SendBroadcastMessage(message []byte) {
 
 // SendMessageByUserId 发送消息
 func (manager *ClientManager) SendMessageByUserId(message []byte, userId int64) {
-
 	client, ok := manager.clientsUserIdMap[userId]
 	if !ok {
-		helper.Logger.Errorf("消息找不到在线用户【%d】：%s", userId, string(message))
+		errMessage := fmt.Sprintf("客户端【%d】发送的消息【%s】未能转发出去，客户端未在线", userId, string(message))
+		helper.Logger.Errorf(errMessage)
 		return
 	}
 	client.send <- message

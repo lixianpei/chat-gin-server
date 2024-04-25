@@ -36,6 +36,8 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 	_user.WxSessionKey = field.NewString(tableName, "wx_session_key")
 	_user.Gender = field.NewInt32(tableName, "gender")
 	_user.Avatar = field.NewString(tableName, "avatar")
+	_user.LastLoginTime = field.NewTime(tableName, "last_login_time")
+	_user.LastLoginIP = field.NewString(tableName, "last_login_ip")
 	_user.CreatedAt = field.NewTime(tableName, "created_at")
 	_user.UpdatedAt = field.NewTime(tableName, "updated_at")
 	_user.DeletedAt = field.NewField(tableName, "deleted_at")
@@ -49,19 +51,21 @@ func newUser(db *gorm.DB, opts ...gen.DOOption) user {
 type user struct {
 	userDo
 
-	ALL          field.Asterisk
-	ID           field.Int64  // 自增
-	Phone        field.String // 用户手机号
-	UserName     field.String // 用户名称
-	Nickname     field.String // 用户昵称
-	WxOpenid     field.String // 微信openid
-	WxUnionid    field.String // 微信unionid
-	WxSessionKey field.String // 微信会话密钥session_key
-	Gender       field.Int32  // 性别
-	Avatar       field.String // 头像
-	CreatedAt    field.Time   // 创建时间
-	UpdatedAt    field.Time   // 更新时间
-	DeletedAt    field.Field  // 删除时间
+	ALL           field.Asterisk
+	ID            field.Int64  // 自增
+	Phone         field.String // 用户手机号
+	UserName      field.String // 用户名称
+	Nickname      field.String // 用户昵称
+	WxOpenid      field.String // 微信openid
+	WxUnionid     field.String // 微信unionid
+	WxSessionKey  field.String // 微信会话密钥session_key
+	Gender        field.Int32  // 性别
+	Avatar        field.String // 头像
+	LastLoginTime field.Time   // 最后登录时间
+	LastLoginIP   field.String // 最后登录IP
+	CreatedAt     field.Time   // 创建时间
+	UpdatedAt     field.Time   // 更新时间
+	DeletedAt     field.Field  // 删除时间
 
 	fieldMap map[string]field.Expr
 }
@@ -87,6 +91,8 @@ func (u *user) updateTableName(table string) *user {
 	u.WxSessionKey = field.NewString(table, "wx_session_key")
 	u.Gender = field.NewInt32(table, "gender")
 	u.Avatar = field.NewString(table, "avatar")
+	u.LastLoginTime = field.NewTime(table, "last_login_time")
+	u.LastLoginIP = field.NewString(table, "last_login_ip")
 	u.CreatedAt = field.NewTime(table, "created_at")
 	u.UpdatedAt = field.NewTime(table, "updated_at")
 	u.DeletedAt = field.NewField(table, "deleted_at")
@@ -106,7 +112,7 @@ func (u *user) GetFieldByName(fieldName string) (field.OrderExpr, bool) {
 }
 
 func (u *user) fillFieldMap() {
-	u.fieldMap = make(map[string]field.Expr, 12)
+	u.fieldMap = make(map[string]field.Expr, 14)
 	u.fieldMap["id"] = u.ID
 	u.fieldMap["phone"] = u.Phone
 	u.fieldMap["user_name"] = u.UserName
@@ -116,6 +122,8 @@ func (u *user) fillFieldMap() {
 	u.fieldMap["wx_session_key"] = u.WxSessionKey
 	u.fieldMap["gender"] = u.Gender
 	u.fieldMap["avatar"] = u.Avatar
+	u.fieldMap["last_login_time"] = u.LastLoginTime
+	u.fieldMap["last_login_ip"] = u.LastLoginIP
 	u.fieldMap["created_at"] = u.CreatedAt
 	u.fieldMap["updated_at"] = u.UpdatedAt
 	u.fieldMap["deleted_at"] = u.DeletedAt

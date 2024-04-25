@@ -2,10 +2,8 @@ package ws
 
 import (
 	"GoChatServer/dal/model/chat_model"
-	"GoChatServer/dal/query/chat_query"
 	"GoChatServer/helper"
 	"GoChatServer/service"
-	"encoding/json"
 	"fmt"
 	"github.com/gorilla/websocket"
 	"log"
@@ -82,7 +80,6 @@ func (c *Client) readPump() {
 	}
 	c.conn.SetPongHandler(func(string) error {
 		err = c.conn.SetReadDeadline(time.Now().Add(pongWait))
-		//fmt.Println(time.Now().String(), "-SetPongHandler....多少时间后判断客户端已断开连接：", time.Now().Add(pongWait).String())
 		if err != nil {
 			fmt.Println("SetPongHandlerSetReadDeadlineError:", err.Error())
 		}
@@ -104,36 +101,9 @@ func (c *Client) readPump() {
 			break
 		}
 
-		//TODO 可根据消息类型进行判断是群消息还是私聊消息
-		messageData, err := HandleMessageSave(string(message), c.userId)
-		if err != nil {
-			fmt.Println(fmt.Sprintf("客户端【%d】发送的消息解析错误：%s", c.userId, err.Error()))
-			break
-		}
-		isSingleChat := messageData.Receiver > 0
-		isGroupChat := messageData.GroupId > 0
+		//消息发送和保存
+		_, _ = HandleMessageSaveAndSend(string(message), c.userId)
 
-		//整理组装后的消息，包含消息发送人的头像等其他扩展信息
-		messageJson, _ := json.Marshal(messageData)
-
-		switch {
-		case isSingleChat:
-			//私聊消息
-			client := IM.GetClientByUserId(messageData.Receiver)
-			if client != nil {
-				client.send <- messageJson
-			} else {
-				//未在线
-				fmt.Println(fmt.Sprintf("客户端【%s】发送的消息【%s】未能转发出去，单聊客户端未在线", c.userId, string(message)))
-			}
-		case isGroupChat:
-			//群消息：暂时当做广播消息发送出去 TODO
-			c.clientManager.broadcast <- messageJson
-		default:
-			//广播消息
-			c.clientManager.broadcast <- messageJson
-
-		}
 	}
 }
 
@@ -218,7 +188,7 @@ func serveWs(manager *ClientManager, w http.ResponseWriter, r *http.Request) {
 	}
 
 	//获取用户信息
-	userInfo, _ := service.User.GetUserById(claims.UserId)
+	userInfo, _ := service.User.GetMessageUserById(claims.UserId)
 	if userInfo == nil || userInfo.ID == 0 {
 		helper.Logger.Infof("ws.获取用户[%d]失败", claims.UserId)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -243,91 +213,4 @@ func serveWs(manager *ClientManager, w http.ResponseWriter, r *http.Request) {
 	// new goroutines.
 	go client.writePump()
 	go client.readPump()
-}
-
-// HandleMessageSave 处理用户消息保存
-func HandleMessageSave(wsMessage string, sender int64) (messageData Message, err error) {
-	err = json.Unmarshal([]byte(wsMessage), &messageData)
-	if err != nil {
-		return messageData, err
-	}
-
-	mUser, err := service.User.GetUserById(sender)
-	if err != nil {
-		return messageData, fmt.Errorf("用戶不存在")
-	}
-
-	//消息内容
-	mMessage := chat_model.Message{
-		Sender:  mUser.ID,
-		Content: messageData.Data,
-	}
-	//消息关联的用户
-	messageUsers := make([]*chat_model.MessageUser, 0)
-
-	//消息入库
-	err = helper.Db.Transaction(func(tx *chat_query.Query) error {
-		//保存消息
-		err = tx.Message.Create(&mMessage)
-		if err != nil {
-			return err
-		}
-
-		//查询消息关联的用户,TODO 暂时查询全量用户
-		users := make([]*chat_model.User, 0)
-		err = tx.User.Scan(&users)
-		if err != nil {
-			return err
-		}
-
-		for _, user := range users {
-			messageUsers = append(messageUsers, &chat_model.MessageUser{
-				MessageID: mMessage.ID,
-				Receiver:  user.ID,
-				IsRead:    0,
-			})
-		}
-		if len(messageUsers) > 0 {
-			err = tx.MessageUser.Create(messageUsers...)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		return messageData, err
-	}
-	messageData.Time = time.Now().Local().Format(time.DateTime) //TODO
-	messageData.MessageId = mMessage.ID
-	messageData.SenderInfo = mUser
-	messageData.SenderInfo.Avatar = helper.GenerateStaticUrl(mUser.Avatar) //生成消息的发送人的头像
-	messageData.SenderInfo.WxOpenid = ""
-	messageData.SenderInfo.WxUnionid = ""
-	messageData.SenderInfo.WxSessionKey = ""
-
-	////消息推入消息中心：
-	//if len(messageUsers) > 0 {
-	//	for _, messageUser := range messageUsers {
-	//		message := Message{
-	//			MessageId:    mMessage.ID,
-	//			Type:         MessageTypeNormal,
-	//			Sender:       mUser.ID,
-	//			Receiver:     messageData.Receiver,
-	//			GroupId:      0,
-	//			Data:         messageData.Data,
-	//			Time:         time.Now().Local().Format(time.DateTime),
-	//			SenderAvatar: helper.GenerateStaticUrl(mUser.Avatar),
-	//		}
-	//
-	//		messageJsonByte, err := json.Marshal(message)
-	//		if err != nil {
-	//			helper.Logger.Errorf("消息[%d]Marshal失败：%s", message.MessageId, err.Error())
-	//			continue
-	//		}
-	//
-	//		IM.SendMessageByUserId(messageJsonByte, messageUser.Receiver)
-	//	}
-	//}
-	return messageData, nil
 }
