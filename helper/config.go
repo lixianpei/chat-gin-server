@@ -36,6 +36,7 @@ type ConfigData struct {
 	Server configServer // 服务相关配置
 	Db     configDb     // 数据库相关配置
 	WeiXin configWeiXin //微信相关配置
+	Redis  configRedis
 }
 
 // 服务相关配置
@@ -49,15 +50,26 @@ type configServer struct {
 
 // 数据库相关配置
 type configDb struct {
-	Host     string
-	Port     string
-	User     string
-	Password string
-	Database string
+	Host            string
+	Port            string
+	User            string
+	Password        string
+	Database        string
+	MaxOpenConns    int
+	ConnMaxIdleTime int
+	ConnMaxLifetime int
+	MaxIdleConns    int
 }
 
 // 微信相关配置
 type configWeiXin struct {
 	Appid  string
 	Secret string
+}
+
+// Redis相关配置
+type configRedis struct {
+	Address  string
+	Password string
+	Prefix   string
 }

@@ -96,6 +96,9 @@ func PhoneLogin(c *gin.Context) {
 		helper.ResponseError(c, err.Error())
 		return
 	}
+	helper.Redis.Set(c, "aaaaaaa", "bbbbbbbbbbbb", time.Hour)
+	fmt.Println(helper.Redis.Get(c, "aaaaaaa").String())
+	fmt.Println(helper.Redis.Lock(c, "aaaaaaa", time.Hour))
 
 	qUser := helper.Db.User
 	mUserInfo := &chat_model.User{}
@@ -582,15 +585,9 @@ func AddGroupUser(c *gin.Context) {
 		return
 	}
 
-	mUser, err := service.User.GetLoginUser(c)
-	if err != nil {
-		helper.ResponseError(c, err.Error())
-		return
-	}
-
 	var group chat_model.Group
 	qGroup := helper.Db.Group
-	err = qGroup.WithContext(c).Where(qGroup.ID.Eq(form.GroupId)).Scan(&group)
+	err := qGroup.WithContext(c).Where(qGroup.ID.Eq(form.GroupId)).Scan(&group)
 	if err != nil || group.ID == 0 {
 		helper.ResponseError(c, "聊天群信息错误")
 		return

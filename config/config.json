@@ -7,16 +7,23 @@
     "staticFileServerPath": "/static/uploads"
   },
   "db": {
-    "host": "127.0.0.1",
+    "host": "192.168.220.128",
     "port": "3306",
     "user": "root",
     "password": "123456",
-    "database": "chat"
+    "database": "chat",
+    "maxOpenConns": 10,
+    "maxIdleTime": 3600,
+    "maxLifetime": 3600,
+    "maxIdleConns": 5
   },
   "weiXin": {
     "appid": "wx21988c2d8d81bacc",
     "secret": "66b92b375be9bf2b869f18487365d68c"
   },
   "redis": {
+    "address": "127.0.0.1:6379",
+    "password": "123456",
+    "prefix": "chat:"
   }
 }
