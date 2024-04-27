@@ -75,13 +75,11 @@ func WxLogin(c *gin.Context) {
 		return
 	}
 
-	//处理头像
-	mUserInfo.Avatar = helper.GenerateStaticUrl(mUserInfo.Avatar)
-
 	helper.ResponseOkWithMessageData(c, gin.H{
-		"user_id":  mUserInfo.ID,
-		"token":    token,
-		"userInfo": mUserInfo,
+		"user_id":   mUserInfo.ID,
+		"token":     token,
+		"avatarUrl": helper.GenerateStaticUrl(mUserInfo.Avatar),
+		"userInfo":  mUserInfo,
 	}, "ok")
 }
 
