@@ -31,17 +31,17 @@ func (l *GormLogger) LogMode(level gormLogger.LogLevel) gormLogger.Interface {
 
 // Info 实现 GORM Logger 接口的 Info 方法
 func (l *GormLogger) Info(ctx context.Context, msg string, data ...interface{}) {
-	fmt.Println("GormLogger.Info...", msg)
+	Logger.Errorf("GormInfo:" + msg)
 }
 
 // Warn 实现 GORM Logger 接口的 Warn 方法
 func (l *GormLogger) Warn(ctx context.Context, msg string, data ...interface{}) {
-	fmt.Println("GormLogger.Warn......", msg)
+	Logger.Errorf("GormWarn:" + msg)
 }
 
 // Warn 实现 GORM Logger 接口的 Error 方法
 func (l *GormLogger) Error(ctx context.Context, msg string, data ...interface{}) {
-	fmt.Println("GormLogger.Error......", msg)
+	Logger.Errorf("GormError:" + msg)
 }
 
 // Trace 实现 GORM Logger 接口的 Trace 方法

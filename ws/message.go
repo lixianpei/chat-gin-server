@@ -119,11 +119,13 @@ func HandleMessageSaveAndSend(wsMessage string, sender int64) (messageData Messa
 	messageData.MessageId = mMessage.ID
 	messageData.SenderInfo = mSenderInfo
 
+	fmt.Println("消息将要发送给的用户：")
+
 	// 根据消息关联的用户发送消息
 	messageJson, _ := json.Marshal(messageData)
 	for _, messageUser := range messageUsers {
-		messageSendUserId := messageUser.ID
-		go IM.SendMessageByUserId(messageJson, messageSendUserId)
+		messageReceiverUserId := messageUser.Receiver
+		go IM.SendMessageByUserId(messageJson, messageReceiverUserId)
 	}
 
 	return messageData, nil

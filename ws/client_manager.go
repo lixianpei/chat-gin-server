@@ -74,6 +74,9 @@ func (manager *ClientManager) ClientUnregister(client *Client) {
 	manager.lock.Lock()
 	defer func() {
 		manager.lock.Unlock()
+		if err := recover(); err != nil {
+			helper.Logger.Errorf("ClientUnregister: %T", err)
+		}
 	}()
 
 	if _, ok := manager.clients[client]; ok {
@@ -87,6 +90,11 @@ func (manager *ClientManager) ClientUnregister(client *Client) {
 
 // SendBroadcastMessage 发送广播消息
 func (manager *ClientManager) SendBroadcastMessage(message []byte) {
+	defer func() {
+		if err := recover(); err != nil {
+			helper.Logger.Errorf("SendBroadcastMessage: %T", err)
+		}
+	}()
 	for client := range manager.clients {
 		select {
 		case client.send <- message:
@@ -101,6 +109,11 @@ func (manager *ClientManager) SendBroadcastMessage(message []byte) {
 
 // SendMessageByUserId 发送消息
 func (manager *ClientManager) SendMessageByUserId(message []byte, userId int64) {
+	defer func() {
+		if err := recover(); err != nil {
+			helper.Logger.Errorf("SendMessageByUserId: %T", err)
+		}
+	}()
 	client, ok := manager.clientsUserIdMap[userId]
 	if !ok {
 		errMessage := fmt.Sprintf("客户端【%d】发送的消息【%s】未能转发出去，客户端未在线", userId, string(message))
@@ -113,7 +126,7 @@ func (manager *ClientManager) SendMessageByUserId(message []byte, userId int64) 
 func (manager *ClientManager) run() {
 	defer func() {
 		if err := recover(); err != nil {
-			fmt.Println("ClientManager-recover: ", err)
+			helper.Logger.Errorf("ClientManagerRun: %T", err)
 		}
 	}()
 	for {

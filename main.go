@@ -13,7 +13,7 @@ func main() {
 	helper.InitSqlLogger()        //初始化日志
 	helper.InitChatDatabase()     //初始化DB
 	helper.InitWeiXin()           //初始化微信实例
-	helper.InitRedis()
+	//helper.InitRedis()
 
 	//_ = gin.Default()                             //创建gin实例
 	engine := gin.New()                           //创建gin实例

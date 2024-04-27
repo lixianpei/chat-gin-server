@@ -46,6 +46,7 @@ type configServer struct {
 	Host                 string
 	UploadFilePath       string
 	StaticFileServerPath string
+	DefaultAvatar        []string
 }
 
 // 数据库相关配置

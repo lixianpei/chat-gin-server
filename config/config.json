@@ -4,10 +4,14 @@
     "env": "dev",
     "uploadFilePath": "uploads",
     "host": "http://127.0.0.1:8081",
-    "staticFileServerPath": "/static/uploads"
+    "staticFileServerPath": "/static/uploads",
+    "defaultAvatar": [
+      "avatars/90ab58c6-f153-43e4-bd9d-8baa6640c70a.jpg",
+      "avatars/4217c3bd-344f-43bc-a529-027649dd1d48.jpg"
+    ]
   },
   "db": {
-    "host": "192.168.220.128",
+    "host": "127.0.0.1",
     "port": "3306",
     "user": "root",
     "password": "123456",

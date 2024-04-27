@@ -39,7 +39,6 @@ func WxLogin(c *gin.Context) {
 	qUser := helper.Db.User
 	mUserInfo := &chat_model.User{}
 	err = helper.Db.WithContext(c).User.Where(qUser.WxOpenid.Eq(wxResult.OpenId)).Scan(mUserInfo)
-	fmt.Println(err, mUserInfo)
 	if err != nil {
 		helper.ResponseError(c, err.Error())
 		return
@@ -47,9 +46,11 @@ func WxLogin(c *gin.Context) {
 	if mUserInfo.ID == 0 {
 		//创建新用户
 		mUserInfo = &chat_model.User{
-			WxOpenid:     wxResult.OpenId,
-			WxUnionid:    wxResult.UnionId,
-			WxSessionKey: wxResult.SessionKey,
+			WxOpenid:      wxResult.OpenId,
+			WxUnionid:     wxResult.UnionId,
+			WxSessionKey:  wxResult.SessionKey,
+			LastLoginIP:   c.ClientIP(),
+			LastLoginTime: time.Now().Local(),
 		}
 		err = helper.Db.WithContext(c).User.Create(mUserInfo)
 		if err != nil {
@@ -60,8 +61,10 @@ func WxLogin(c *gin.Context) {
 		//保存信息数据
 		_, err = helper.Db.WithContext(c).User.Where(qUser.ID.Eq(mUserInfo.ID)).Updates(&chat_model.User{
 			//WxOpenid:     wxResult.OpenId,
-			WxUnionid:    wxResult.UnionId,
-			WxSessionKey: wxResult.SessionKey,
+			WxUnionid:     wxResult.UnionId,
+			WxSessionKey:  wxResult.SessionKey,
+			LastLoginIP:   c.ClientIP(),
+			LastLoginTime: time.Now().Local(),
 		})
 	}
 
@@ -96,9 +99,9 @@ func PhoneLogin(c *gin.Context) {
 		helper.ResponseError(c, err.Error())
 		return
 	}
-	helper.Redis.Set(c, "aaaaaaa", "bbbbbbbbbbbb", time.Hour)
-	fmt.Println(helper.Redis.Get(c, "aaaaaaa").String())
-	fmt.Println(helper.Redis.Lock(c, "aaaaaaa", time.Hour))
+	if len(loginForm.Avatar) == 0 {
+		loginForm.Avatar = helper.Configs.Server.DefaultAvatar[0]
+	}
 
 	qUser := helper.Db.User
 	mUserInfo := &chat_model.User{}

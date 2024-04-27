@@ -53,6 +53,7 @@ func (u *user) GetMessageReceiverUsers(groupId int64, receiver int64) ([]*chat_m
 	switch {
 	case receiver > 0:
 		//私聊消息
+		fmt.Println("私聊消息")
 		userInfo, err := u.GetMessageUserById(receiver)
 		if userInfo != nil {
 			users = append(users, userInfo)
@@ -60,10 +61,12 @@ func (u *user) GetMessageReceiverUsers(groupId int64, receiver int64) ([]*chat_m
 		return users, err
 	case groupId > 0:
 		//群消息：暂时当做广播消息发送出去 TODO 查询全部用户
+		fmt.Println("群消息")
 		err := qUser.Scan(&users)
 		return users, err
 	default:
 		//广播消息
+		fmt.Println("广播消息")
 		err := qUser.Scan(&users)
 		return users, err
 	}

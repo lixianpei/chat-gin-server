@@ -208,6 +208,7 @@ func serveWs(manager *ClientManager, w http.ResponseWriter, r *http.Request) {
 		userInfo:      userInfo,
 	}
 	client.clientManager.register <- client
+	helper.Logger.Infof("新用户连接ws：%+v", client)
 
 	// Allow collection of memory referenced by the caller by doing all work in
 	// new goroutines.
