@@ -87,3 +87,15 @@ func (u *user) GetFriendContact(userId int64) ([]*chat_model.User, error) {
 	}
 	return mUsers, err
 }
+
+// IsFriendContact 判断是否为好友
+func (u *user) IsFriendContact(c *gin.Context, userId int64, friendId int64) (int64, error) {
+	qUser := helper.Db.User
+	qUserContact := helper.Db.UserContact
+	return qUser.WithContext(c).Join(qUserContact, qUserContact.UserID.EqCol(qUser.ID)).
+		Select(qUser.ID, qUser.UserName, qUser.Nickname, qUser.Phone, qUser.Avatar).
+		Where(qUserContact.Status.Eq(consts.UserFriendStatusIsFriend)).
+		Where(qUser.Where(qUserContact.UserID.Eq(userId)).Or(qUserContact.FriendUserID.Eq(friendId))).
+		Where(qUser.Where(qUserContact.UserID.Eq(friendId)).Or(qUserContact.FriendUserID.Eq(userId))).
+		Count()
+}

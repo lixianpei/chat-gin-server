@@ -215,8 +215,6 @@ func WxUserInfoSave(c *gin.Context) {
 	}
 	_, err = qUser.WithContext(c).Where(qUser.ID.Eq(mUser.ID)).Updates(updateUser)
 
-	fmt.Println("updateUser......", updateUser.Avatar, updateUser.Nickname, updateUser.Gender)
-
 	//返回数据
 	helper.ResponseOkWithData(c, gin.H{
 		"wxUserForm": form,
@@ -414,6 +412,48 @@ func SearchUser(c *gin.Context) {
 	helper.ResponseOkWithData(c, mUser)
 }
 
+type UserDetailForm struct {
+	Id int64 `form:"id" json:"id" binding:"required"`
+}
+type UserDetailInfo struct {
+	ID        int64  `gorm:"column:id;primaryKey;autoIncrement:true;comment:自增" json:"id"` // 自增
+	Phone     string `gorm:"column:phone;not null;comment:用户手机号" json:"phone"`             // 用户手机号
+	UserName  string `gorm:"column:user_name;not null;comment:用户名称" json:"user_name"`      // 用户名称
+	Nickname  string `gorm:"column:nickname;not null;comment:用户昵称" json:"nickname"`        // 用户昵称
+	Gender    int32  `gorm:"column:gender;not null;default:-1;comment:性别" json:"gender"`   // 性别
+	Avatar    string `gorm:"column:avatar;not null;comment:头像" json:"avatar"`              // 头像
+	AvatarUrl string `json:"avatarUrl"`                                                    // 头像
+	IsFriend  int64  `json:"isFriend"`
+}
+
+func UserDetail(c *gin.Context) {
+	var form UserDetailForm
+	if err := c.ShouldBind(&form); err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	qUser := helper.Db.User
+	mUser := UserDetailInfo{}
+	err := qUser.WithContext(c).
+		Select(qUser.ID, qUser.UserName, qUser.Nickname, qUser.Phone, qUser.Avatar, qUser.Gender).
+		Where(qUser.ID.Eq(form.Id)).Scan(&mUser)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+	if mUser.ID == 0 {
+		helper.ResponseOkWithData(c, gin.H{})
+		return
+	}
+	mUser.AvatarUrl = helper.GenerateStaticUrl(mUser.Avatar)
+
+	//检测是否为好友
+	mUser.IsFriend, _ = service.User.IsFriendContact(c, c.GetInt64(consts.UserId), mUser.ID)
+
+	helper.ResponseOkWithData(c, mUser)
+}
+
 type ApplyFriendForm struct {
 	UserId int64 `form:"userId" json:"userId" binding:"required"`
 	Status int   `form:"status" json:"status" binding:"oneof=2 3"`
@@ -497,7 +537,7 @@ func ApplyFriend(c *gin.Context) {
 		err = qContact.WithContext(c).Select(qContact.UserID, qContact.FriendUserID, qContact.Status).Create(&chat_model.UserContact{
 			UserID:       user.ID,
 			FriendUserID: friend.ID,
-			Status:       consts.UserFriendStatusIsApplying,
+			Status:       consts.UserFriendStatusIsFriend, //直接添加为好友，暂时去掉审核操作
 		})
 		if err != nil {
 			helper.ResponseError(c, err.Error())
