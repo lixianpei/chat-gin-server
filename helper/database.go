@@ -8,7 +8,8 @@ import (
 	"time"
 )
 
-var Db *chat_query.Query
+var DbQuery *chat_query.Query
+var Db *gorm.DB
 
 func InitChatDatabase() {
 	dbConfig := Configs.Db
@@ -47,7 +48,9 @@ func InitChatDatabase() {
 		Logger.Error("数据库初始化失败：", err.Error())
 		return
 	}
-	Db = chat_query.Use(db)
+	Db = db                      //支持原生sql查询
+	DbQuery = chat_query.Use(db) //更安全的db查询
 
+	//db.Raw()
 	Logger.Info("ChatDb数据库连接初始化成功")
 }

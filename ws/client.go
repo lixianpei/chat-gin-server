@@ -1,7 +1,7 @@
 package ws
 
 import (
-	"GoChatServer/dal/model/chat_model"
+	"GoChatServer/dal/structs"
 	"GoChatServer/helper"
 	"GoChatServer/service"
 	"fmt"
@@ -51,7 +51,7 @@ type Client struct {
 	send chan []byte
 
 	userId   int64
-	userInfo *chat_model.User
+	userInfo *structs.UserItem
 }
 
 var upGrader = websocket.Upgrader{

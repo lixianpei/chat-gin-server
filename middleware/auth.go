@@ -3,7 +3,6 @@ package middleware
 import (
 	"GoChatServer/consts"
 	"GoChatServer/helper"
-	"fmt"
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,8 +21,7 @@ func LoginAuthHandler() gin.HandlerFunc {
 		token := c.GetHeader("token")
 		claims, err := helper.JwtParseChecking(token) // claims
 		if err != nil && !isWhiteList {
-			fmt.Println("鉴权失败：", err.Error())
-			helper.ResponseError(c, err.Error())
+			helper.ResponseErrorCode(c, helper.ResponseCodeTokenError, err.Error())
 			c.Abort()
 			return
 		}

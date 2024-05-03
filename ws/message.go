@@ -1,34 +1,28 @@
 package ws
 
 import (
+	"GoChatServer/consts"
 	"GoChatServer/dal/model/chat_model"
 	"GoChatServer/dal/query/chat_query"
+	"GoChatServer/dal/structs"
 	"GoChatServer/helper"
 	"GoChatServer/service"
 	"encoding/json"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"time"
-)
-
-const (
-	MessageTypeNormal     = "text"       //消息类型-普通文本消息
-	MessageTypeEntryGroup = "entryGroup" //消息类型-用户加入群聊消息
-	MessageTypeAddFriend  = "addFriend"  //消息类型-加好友消息
-	MessageTypeBinary     = "binary"     //消息类型-二进制类型
-	MessageTypeUserEntry  = "userEntry"  //消息类型-用户上线
-	MessageTypeUserExit   = "userExit"   //消息类型-用户下线
 )
 
 // Message 消息
 type Message struct {
-	MessageId  int64            `json:"messageId"`  //消息ID
-	Type       string           `json:"type"`       //消息类型
-	Sender     int64            `json:"sender"`     //消息发送的用户ID
-	Receiver   int64            `json:"receiver"`   //消息接收的用户ID
-	GroupId    int64            `json:"groupId"`    //消息关联的群ID
-	Data       string           `json:"content"`    //消息内容
-	Time       string           `json:"time"`       //消息
-	SenderInfo *chat_model.User `json:"senderInfo"` //消息发送人信息 TODO 后期关键信息去掉
+	MessageId  int64             `json:"messageId"`  //消息ID
+	Type       int32             `json:"type"`       //消息类型
+	Sender     int64             `json:"sender"`     //消息发送的用户ID
+	Receiver   int64             `json:"receiver"`   //消息接收的用户ID
+	GroupId    int64             `json:"groupId"`    //消息关联的群ID
+	Data       string            `json:"content"`    //消息内容
+	Time       string            `json:"time"`       //消息
+	SenderInfo *structs.UserItem `json:"senderInfo"` //消息发送人信息 TODO 后期关键信息去掉
 }
 
 // ToString 对消息格式化
@@ -46,7 +40,7 @@ func (m *Message) ToString() (messageStr string) {
 func NewMessageText(messageId int64, data string, sender int64, receiver int64, groupId int64) *Message {
 	return &Message{
 		MessageId: messageId,
-		Type:      MessageTypeEntryGroup,
+		Type:      consts.MessageTypeEntryGroup,
 		Sender:    sender,
 		Receiver:  receiver,
 		GroupId:   groupId,
@@ -73,16 +67,26 @@ func HandleMessageSaveAndSend(wsMessage string, sender int64) (messageData Messa
 		return messageData, fmt.Errorf("用戶不存在")
 	}
 
+	source := int32(0)
+	if sender > 0 && messageData.GroupId == 0 {
+		source = consts.MessageSourceUser //私聊消息
+	} else if sender > 0 && messageData.GroupId > 0 {
+		source = consts.MessageSourceGroup //群聊消息
+	}
+
 	//消息内容
 	mMessage := chat_model.Message{
 		Sender:  mSenderInfo.ID,
+		GroupID: messageData.GroupId,
+		Source:  source,
 		Content: messageData.Data,
+		Type:    consts.MessageTypeNormal,
 	}
 	//消息关联的用户
 	messageUsers := make([]*chat_model.MessageUser, 0)
 
 	//消息入库
-	err = helper.Db.Transaction(func(tx *chat_query.Query) error {
+	err = helper.DbQuery.Transaction(func(tx *chat_query.Query) error {
 		//保存消息
 		err = tx.Message.Create(&mMessage)
 		if err != nil {
@@ -118,14 +122,20 @@ func HandleMessageSaveAndSend(wsMessage string, sender int64) (messageData Messa
 	messageData.Time = time.Now().Local().Format(time.DateTime)
 	messageData.MessageId = mMessage.ID
 	messageData.SenderInfo = mSenderInfo
-
-	fmt.Println("消息将要发送给的用户：")
+	messageData.Sender = sender
 
 	// 根据消息关联的用户发送消息
 	messageJson, _ := json.Marshal(messageData)
 	for _, messageUser := range messageUsers {
 		messageReceiverUserId := messageUser.Receiver
-		go IM.SendMessageByUserId(messageJson, messageReceiverUserId)
+		fmt.Println("消息准备发送给好友：", sender, messageReceiverUserId, string(messageJson))
+		//判断是否为好友，不是好友不给发私聊消息
+		if yes, _ := service.User.IsFriendContact(&gin.Context{Request: nil}, sender, messageReceiverUserId); yes > 0 {
+			fmt.Println("消息准备发送给好友：ok....")
+			go IM.SendMessageByUserId(messageJson, messageReceiverUserId)
+		} else {
+			helper.Logger.Infof("消息接收用户还不是好友[%d]，无法给用户发送消息: %s", messageReceiverUserId, messageJson)
+		}
 	}
 
 	return messageData, nil

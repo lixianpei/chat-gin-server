@@ -7,9 +7,10 @@ import (
 )
 
 const (
-	ResponseCodeOk    = 200 //返回成功
-	ResponseCodeError = 400 //错误
-	ResponseCodeLogin = 2   //普通错误
+	ResponseCodeOk         = 200 //返回成功
+	ResponseCodeError      = 400 //错误
+	ResponseCodeTokenError = 401 //Token错误
+	ResponseCodeLogin      = 2   //普通错误
 )
 
 type responseData struct {
@@ -76,5 +77,13 @@ func ResponseErrorWithData(c *gin.Context, message string, data interface{}) {
 		Code:    ResponseCodeError,
 		Message: message,
 		Data:    data,
+	})
+}
+
+// ResponseErrorCode 返回错误-携带错误消息
+func ResponseErrorCode(c *gin.Context, code int, message string) {
+	response(c, &responseData{
+		Code:    code,
+		Message: message,
 	})
 }

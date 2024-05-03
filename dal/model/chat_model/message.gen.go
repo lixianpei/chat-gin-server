@@ -14,13 +14,15 @@ const TableNameMessage = "message"
 
 // Message 消息
 type Message struct {
-	ID        int64          `gorm:"column:id;primaryKey;autoIncrement:true;comment:自增" json:"id"`                        // 自增
-	Sender    int64          `gorm:"column:sender;not null;comment:消息发送人" json:"sender"`                                  // 消息发送人
-	Type      string         `gorm:"column:type;not null;comment:消息类型" json:"type"`                                       // 消息类型
-	Content   string         `gorm:"column:content;not null;comment:消息内容" json:"content"`                                 // 消息内容
-	CreatedAt time.Time      `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"` // 创建时间
-	UpdatedAt time.Time      `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"` // 更新时间
-	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at;comment:删除时间" json:"deleted_at"`                                    // 删除时间
+	ID        int64          `gorm:"column:id;primaryKey;autoIncrement:true;comment:自增" json:"id"`                                      // 自增
+	Sender    int64          `gorm:"column:sender;not null;comment:消息发送人" json:"sender"`                                                // 消息发送人
+	GroupID   int64          `gorm:"column:group_id;not null;comment:群ID" json:"group_id"`                                              // 群ID
+	Source    int32          `gorm:"column:source;not null;comment:消息来源：1-私聊消息；2-群聊消息；" json:"source"`                                  // 消息来源：1-私聊消息；2-群聊消息；
+	Type      int32          `gorm:"column:type;not null;comment:消息类型: 1-普通文本消息；2-用户加入群聊消息；3-加好友消息；4-二进制类型；5-用户上线；6-用户下线；" json:"type"` // 消息类型: 1-普通文本消息；2-用户加入群聊消息；3-加好友消息；4-二进制类型；5-用户上线；6-用户下线；
+	Content   string         `gorm:"column:content;not null;comment:消息内容" json:"content"`                                               // 消息内容
+	CreatedAt time.Time      `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"`               // 创建时间
+	UpdatedAt time.Time      `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"`               // 更新时间
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at;comment:删除时间" json:"deleted_at"`                                                  // 删除时间
 }
 
 // TableName Message's table name
