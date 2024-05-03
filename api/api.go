@@ -541,8 +541,8 @@ func ApplyFriend(c *gin.Context) {
 	notifyMessage.Data = fmt.Sprintf("用户【%s】添加您为好友", user.Nickname)
 
 	//消息通知
-	notifyMessageJson, _ := json.Marshal(&notifyMessage)
-	_, _ = ws.HandleMessageSaveAndSend(string(notifyMessageJson), user.ID)
+	//notifyMessageJson, _ := json.Marshal(&notifyMessage)
+	//_, _ = ws.HandleMessageSaveAndSend(string(notifyMessageJson), user.ID)
 
 	helper.ResponseOk(c)
 }
@@ -717,6 +717,8 @@ func GetChatList(c *gin.Context) {
 		if ok2 && lastMessage.ID > 0 {
 			contacts[k].LastMessage = lastMessage
 		}
+
+		v.LastLoginTime = helper.FormatTimeRFC3339ToDatetime(v.LastLoginTime)
 	}
 	helper.ResponseOkWithData(c, contacts)
 }
