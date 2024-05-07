@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"github.com/gin-gonic/gin"
 	uuid "github.com/satori/go.uuid"
+	"gorm.io/gen"
 	"path"
 	"time"
 )
@@ -77,7 +78,7 @@ func WxLogin(c *gin.Context) {
 	}
 
 	helper.ResponseOkWithMessageData(c, gin.H{
-		"user_id":   mUserInfo.ID,
+		"userId":    mUserInfo.ID,
 		"token":     token,
 		"avatarUrl": helper.GenerateStaticUrl(mUserInfo.Avatar),
 		"userInfo":  mUserInfo,
@@ -592,15 +593,24 @@ func AddRoomUser(c *gin.Context) {
 func GetRoomList(c *gin.Context) {
 	//获取发送给当前用户的好友列表
 	userId := c.GetInt64(consts.UserId)
+	roomId := c.GetInt64("roomId")
 
 	rooms := make([]*structs.RoomListItem, 0)
 	qr := helper.DbQuery.Room
 	qru := helper.DbQuery.RoomUser
 	qm := helper.DbQuery.Message
+
+	where := make([]gen.Condition, 0)
+	where = append(where, qru.UserID.Eq(userId))
+	if roomId > 0 {
+		where = append(where, qr.ID.Eq(roomId))
+	}
+
+	//TODO：去掉LeftJoin，最后一条
 	err := qr.WithContext(c).
 		Select(qr.ID.As("roomId"), qr.Title, qr.Type, qr.LastMessageID).
 		Join(qru, qru.RoomID.EqCol(qr.ID)).
-		LeftJoin(qm, qm.RoomID.EqCol(qr.LastMessageID)).
+		LeftJoin(qm, qm.ID.EqCol(qr.LastMessageID)).
 		Where(qru.UserID.Eq(userId)).
 		Order(qr.UpdatedAt.Desc()).
 		Scan(&rooms)
@@ -681,7 +691,6 @@ func formatRoomAvatar(users []*structs.RoomUserItem, userId int64, roomType int3
 }
 
 type SetMessageReadStatusForm struct {
-	Sender int64 `form:"sender" json:"sender"`
 	RoomId int64 `form:"roomId" json:"roomId"`
 }
 
@@ -693,7 +702,7 @@ func SetMessageReadStatus(c *gin.Context) {
 		return
 	}
 
-	if form.Sender == 0 && form.RoomId == 0 {
+	if form.RoomId == 0 {
 		helper.ResponseError(c, "参数错误")
 		return
 	}
@@ -702,6 +711,7 @@ func SetMessageReadStatus(c *gin.Context) {
 	messageIds := make([]int64, 0)
 	messages := make([]*chat_model.Message, 0)
 	qm := helper.DbQuery.Message
+	qmu := helper.DbQuery.MessageUser
 	//查询chat关联的用户
 	qru := helper.DbQuery.RoomUser
 	chatData := chat_model.Room{}
@@ -710,38 +720,30 @@ func SetMessageReadStatus(c *gin.Context) {
 		helper.ResponseError(c, err.Error())
 		return
 	}
-	if form.Sender > 0 {
-		//私聊消息
-		_ = qm.WithContext(c).Where(qm.Sender.Eq(form.Sender)).Scan(&messages)
-	} else if form.RoomId > 0 {
-		//群聊消息，不管是谁发的群消息，一律设置为已读
-		_ = qm.WithContext(c).Where(qm.RoomID.Eq(form.RoomId)).Scan(&messages)
-	}
+	_ = qm.WithContext(c).Where(qm.RoomID.Eq(form.RoomId), qmu.Receiver.Eq(userId)).Scan(&messages)
 
 	for _, v := range messages {
 		messageIds = append(messageIds, v.ID)
 	}
 
-	qmu := helper.DbQuery.MessageUser
 	if len(messageIds) > 0 {
 		//将属于自己的消息标记为已读
-		_, _ = qmu.WithContext(c).Where(qmu.MessageID.In(messageIds...), qmu.Receiver.Eq(userId)).Update(qmu.IsRead, consts.MessageReadStatusYes)
+		_, _ = qmu.WithContext(c).Where(qmu.MessageID.In(messageIds...)).Update(qmu.IsRead, consts.MessageReadStatusYes)
 	}
 
 	helper.ResponseOk(c)
 }
 
 type GetMessageListFrom struct {
-	Sender   []int64 `form:"sender" json:"sender"`
-	ChatId   int64   `json:"chatId" form:"chatId"`
-	IsRead   int32   `json:"isRead" form:"isRead"`
-	Page     int     `json:"page" form:"page"`
-	PageSize int     `json:"pageSize" form:"pageSize"`
+	RoomId   int64 `json:"roomId" form:"roomId"`
+	IsRead   int32 `json:"isRead" form:"isRead"`
+	Page     int   `json:"page" form:"page"`
+	PageSize int   `json:"pageSize" form:"pageSize"`
 }
 type GetMessageListRes struct {
 	Id         int64             `json:"id"`
 	Sender     int64             `json:"sender"`
-	ChatId     int64             `json:"chatId"`
+	RoomId     int64             `json:"roomId" form:"roomId"`
 	Source     int32             `json:"source"`
 	Type       int32             `json:"type"`
 	Content    string            `json:"content"`
@@ -762,12 +764,13 @@ func GetMessageList(c *gin.Context) {
 	qm := helper.DbQuery.Message
 	qmu := helper.DbQuery.MessageUser
 	quc := helper.DbQuery.UserContact
+	qrc := helper.DbQuery.RoomUser
 	list := make([]*GetMessageListRes, 0)
 	count, err := qm.WithContext(c).
-		Select(qm.ALL).
+		Select(qm.ID, qm.Sender, qm.RoomID.As("roomId"), qm.Source, qm.Type, qm.Content, qm.CreatedAt).
 		Join(qmu, qmu.MessageID.EqCol(qm.ID)).
 		Join(quc, quc.FriendUserID.EqCol(qm.Sender)).
-		Where(qm.Sender.In(form.Sender...)).
+		Where(qm.RoomID.Eq(form.RoomId)).
 		Order(qm.ID.Asc()).
 		ScanByPage(&list, offset, form.PageSize)
 	if err != nil {
@@ -777,16 +780,20 @@ func GetMessageList(c *gin.Context) {
 
 	//获取消息发送人的信息
 	qu := helper.DbQuery.User
-	senderUsers := make([]*structs.UserItem, 0)
-	err = qu.WithContext(c).Where(qu.ID.In(form.Sender...)).Scan(&senderUsers)
+	roomUsers := make([]*structs.UserItem, 0)
+	err = qu.WithContext(c).
+		Join(qrc, qrc.RoomID.Eq(form.RoomId)).
+		Where(qrc.RoomID.Eq(form.RoomId)).
+		Scan(&roomUsers)
 	if err != nil {
 		helper.ResponseError(c, err.Error())
 		return
 	}
 	senderUserMap := map[int64]*structs.UserItem{}
-	for _, v := range senderUsers {
+	for _, v := range roomUsers {
 		v.AvatarUrl = helper.GenerateStaticUrl(v.Avatar)
 		senderUserMap[v.ID] = v
+		fmt.Println("senderUserMap.....Item.....", v)
 	}
 
 	//更新消息列表的消息发送列表

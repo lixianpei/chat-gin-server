@@ -20,3 +20,11 @@ type RoomUserItem struct {
 	Avatar    string `json:"avatar"`   // 头像
 	AvatarUrl string `json:"avatarUrl" gorm:"-"`
 }
+
+type RoomInfo struct {
+	Id            int64  `json:"id"`
+	Title         string `json:"title"`
+	Type          int32  `json:"type"`
+	UserCount     int32  `json:"userCount"`
+	LastMessageId int64  `json:"lastMessageId"`
+}

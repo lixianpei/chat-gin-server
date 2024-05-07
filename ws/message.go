@@ -23,6 +23,7 @@ type Message struct {
 	Data       string            `json:"content"`    //消息内容
 	Time       string            `json:"time"`       //消息
 	SenderInfo *structs.UserItem `json:"senderInfo"` //消息发送人信息 TODO 后期关键信息去掉
+	RoomInfo   *structs.RoomInfo `json:"roomInfo"`
 }
 
 // ToString 对消息格式化
@@ -124,6 +125,10 @@ func HandleMessageSaveAndSend(wsMessage string, sender int64) (messageData Messa
 	messageData.MessageId = mMessage.ID
 	messageData.SenderInfo = mSenderInfo
 	messageData.Sender = sender
+
+	messageData.RoomInfo = &structs.RoomInfo{}
+	qr := helper.DbQuery.Room
+	_ = qr.Where(qr.ID.Eq(messageData.RoomId)).Scan(&messageData.RoomInfo)
 
 	// 根据消息关联的用户发送消息
 	messageJson, _ := json.Marshal(messageData)
