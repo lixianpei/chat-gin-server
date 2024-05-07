@@ -41,7 +41,7 @@ func InitChatDatabase() {
 	sqlDb.SetMaxOpenConns(dbConfig.MaxOpenConns)                      //数据库连接池的连接数，需要小于数据库的最高配置，推荐连接数 = ((核心数 * 2) + 有效磁盘数)
 	sqlDb.SetConnMaxIdleTime(time.Duration(dbConfig.ConnMaxIdleTime)) //设置连接的最大空闲时间:通常，可以将最大空闲时间设置为数据库连接超时时间的一半左右，或者根据应用程序的预期负载来调整。
 	sqlDb.SetConnMaxLifetime(time.Duration(dbConfig.ConnMaxLifetime)) //连接可重用的最大时间时长，超时后连接不可再重用:通常，可以将最大生命周期设置为数据库配置的超时时间或稍短一些，以确保连接不会长时间处于不稳定的状态。例如，如果数据库的连接超时设置为5分钟，可以将连接的最大生命周期设置为4分钟左右。
-	sqlDb.SetMaxIdleConns(dbConfig.MaxIdleConns)                      //空闲连接保留在连接池的最大连接数，当设置为 0 时，必须为每个连接从头开始创建一个新连接,通常，可以将最大空闲连接数设置为最大打开连接数的一半左右，或者根据应用程序的预期负载来调整。
+	sqlDb.SetMaxIdleConns(dbConfig.MaxIdleConns)                      //空闲连接保留在连接池的最大连接数，当设置为 0 时，必须为每个连接从头开始创建一个新连接,通常，可以将最大空闲连接数设置为最大打开连接数的一半左右，或者根据应用程序的预期负载来调整。若此数量太小，并发量上来后，同一时间创建新的请求就会出现问题：connectex: Only one usage of each socket address (protocol/network address/port) is normally permitted.
 
 	if err != nil {
 		Logger.Error("数据库初始化失败：", err.Error())
