@@ -19,7 +19,7 @@ type Message struct {
 	Type       int32             `json:"type"`       //消息类型
 	Sender     int64             `json:"sender"`     //消息发送的用户ID
 	Receiver   int64             `json:"receiver"`   //消息接收的用户ID
-	GroupId    int64             `json:"groupId"`    //消息关联的群ID
+	RoomId     int64             `json:"roomId"`     //消息关联的群ID
 	Data       string            `json:"content"`    //消息内容
 	Time       string            `json:"time"`       //消息
 	SenderInfo *structs.UserItem `json:"senderInfo"` //消息发送人信息 TODO 后期关键信息去掉
@@ -37,13 +37,13 @@ func (m *Message) ToString() (messageStr string) {
 }
 
 // NewMessageText 实例化一个文本类型的消息
-func NewMessageText(messageId int64, data string, sender int64, receiver int64, groupId int64) *Message {
+func NewMessageText(messageId int64, data string, sender int64, receiver int64, roomId int64) *Message {
 	return &Message{
 		MessageId: messageId,
 		Type:      consts.MessageTypeEntryGroup,
 		Sender:    sender,
 		Receiver:  receiver,
-		GroupId:   groupId,
+		RoomId:    roomId,
 		Data:      data,
 		Time:      time.Now().Local().Format(time.DateTime),
 	}
@@ -67,21 +67,14 @@ func HandleMessageSaveAndSend(wsMessage string, sender int64) (messageData Messa
 		return messageData, fmt.Errorf("用戶不存在")
 	}
 
-	source := int32(0)
-	if sender > 0 && messageData.GroupId == 0 {
-		source = consts.MessageSourceUser //私聊消息
-	} else if sender > 0 && messageData.GroupId > 0 {
-		source = consts.MessageSourceGroup //群聊消息
-	}
-
 	//消息内容
 	mMessage := chat_model.Message{
 		Sender:  mSenderInfo.ID,
-		GroupID: messageData.GroupId,
-		Source:  source,
+		RoomID:  messageData.RoomId,
 		Content: messageData.Data,
 		Type:    consts.MessageTypeNormal,
 	}
+	fmt.Printf("mMessage....... %+v", mMessage)
 	//消息关联的用户
 	messageUsers := make([]*chat_model.MessageUser, 0)
 
@@ -94,7 +87,7 @@ func HandleMessageSaveAndSend(wsMessage string, sender int64) (messageData Messa
 		}
 
 		//查询消息关联的用户
-		users, err := service.User.GetMessageReceiverUsers(messageData.GroupId, messageData.Receiver)
+		users, err := service.User.GetMessageReceiverUsers(messageData.RoomId, messageData.Receiver)
 		if err != nil {
 			return err
 		}
@@ -112,6 +105,14 @@ func HandleMessageSaveAndSend(wsMessage string, sender int64) (messageData Messa
 				return err
 			}
 		}
+
+		//消息关联的聊天会话数据更新
+		qr := tx.Room
+		_, err = qr.Where(qr.ID.Eq(messageData.RoomId)).Update(qr.LastMessageID, mMessage.ID)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 	if err != nil {

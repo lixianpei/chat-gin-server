@@ -14,13 +14,13 @@ const TableNameUserContact = "user_contact"
 
 // UserContact 用户联系人
 type UserContact struct {
-	ID           int64          `gorm:"column:id;primaryKey;autoIncrement:true;comment:自增" json:"id"`                        // 自增
-	UserID       int64          `gorm:"column:user_id;not null;comment:用户1-申请人" json:"user_id"`                              // 用户1-申请人
-	FriendUserID int64          `gorm:"column:friend_user_id;not null;comment:用户2-被申请添加好友的人" json:"friend_user_id"`          // 用户2-被申请添加好友的人
-	Status       int32          `gorm:"column:status;not null;comment:1-申请中；2-好友；3-拒绝；" json:"status"`                       // 1-申请中；2-好友；3-拒绝；
-	CreatedAt    time.Time      `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"` // 创建时间
-	UpdatedAt    time.Time      `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"` // 更新时间
-	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;comment:删除时间" json:"deleted_at"`                                    // 删除时间
+	ID           int64          `gorm:"column:id;primaryKey;autoIncrement:true;comment:自增" json:"id"`                       // 自增
+	UserID       int64          `gorm:"column:user_id;not null;comment:用户1-申请人" json:"userId"`                              // 用户1-申请人
+	FriendUserID int64          `gorm:"column:friend_user_id;not null;comment:用户2-被申请添加好友的人" json:"friendUserId"`           // 用户2-被申请添加好友的人
+	Status       int32          `gorm:"column:status;not null;comment:1-申请中；2-好友；3-拒绝；" json:"status"`                      // 1-申请中；2-好友；3-拒绝；
+	CreatedAt    time.Time      `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"createdAt"` // 创建时间
+	UpdatedAt    time.Time      `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updatedAt"` // 更新时间
+	DeletedAt    gorm.DeletedAt `gorm:"column:deleted_at;comment:删除时间" json:"deletedAt"`                                    // 删除时间
 }
 
 // TableName UserContact's table name

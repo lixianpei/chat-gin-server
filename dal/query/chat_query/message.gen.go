@@ -29,7 +29,7 @@ func newMessage(db *gorm.DB, opts ...gen.DOOption) message {
 	_message.ALL = field.NewAsterisk(tableName)
 	_message.ID = field.NewInt64(tableName, "id")
 	_message.Sender = field.NewInt64(tableName, "sender")
-	_message.GroupID = field.NewInt64(tableName, "group_id")
+	_message.RoomID = field.NewInt64(tableName, "room_id")
 	_message.Source = field.NewInt32(tableName, "source")
 	_message.Type = field.NewInt32(tableName, "type")
 	_message.Content = field.NewString(tableName, "content")
@@ -49,7 +49,7 @@ type message struct {
 	ALL       field.Asterisk
 	ID        field.Int64  // 自增
 	Sender    field.Int64  // 消息发送人
-	GroupID   field.Int64  // 群ID
+	RoomID    field.Int64  // 聊天会话ID
 	Source    field.Int32  // 消息来源：1-私聊消息；2-群聊消息；
 	Type      field.Int32  // 消息类型: 1-普通文本消息；2-用户加入群聊消息；3-加好友消息；4-二进制类型；5-用户上线；6-用户下线；
 	Content   field.String // 消息内容
@@ -74,7 +74,7 @@ func (m *message) updateTableName(table string) *message {
 	m.ALL = field.NewAsterisk(table)
 	m.ID = field.NewInt64(table, "id")
 	m.Sender = field.NewInt64(table, "sender")
-	m.GroupID = field.NewInt64(table, "group_id")
+	m.RoomID = field.NewInt64(table, "room_id")
 	m.Source = field.NewInt32(table, "source")
 	m.Type = field.NewInt32(table, "type")
 	m.Content = field.NewString(table, "content")
@@ -100,7 +100,7 @@ func (m *message) fillFieldMap() {
 	m.fieldMap = make(map[string]field.Expr, 9)
 	m.fieldMap["id"] = m.ID
 	m.fieldMap["sender"] = m.Sender
-	m.fieldMap["group_id"] = m.GroupID
+	m.fieldMap["room_id"] = m.RoomID
 	m.fieldMap["source"] = m.Source
 	m.fieldMap["type"] = m.Type
 	m.fieldMap["content"] = m.Content

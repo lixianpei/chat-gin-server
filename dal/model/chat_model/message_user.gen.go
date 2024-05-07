@@ -14,13 +14,13 @@ const TableNameMessageUser = "message_user"
 
 // MessageUser 消息-用户
 type MessageUser struct {
-	ID        int64          `gorm:"column:id;primaryKey;autoIncrement:true;comment:自增" json:"id"`                        // 自增
-	MessageID int64          `gorm:"column:message_id;not null;comment:消息ID" json:"message_id"`                           // 消息ID
-	Receiver  int64          `gorm:"column:receiver;not null;comment:消息接收人" json:"receiver"`                              // 消息接收人
-	IsRead    int32          `gorm:"column:is_read;not null;comment:是否已读：0-未读；1-已读；" json:"is_read"`                      // 是否已读：0-未读；1-已读；
-	CreatedAt time.Time      `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"created_at"` // 创建时间
-	UpdatedAt time.Time      `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updated_at"` // 更新时间
-	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at;comment:删除时间" json:"deleted_at"`                                    // 删除时间
+	ID        int64          `gorm:"column:id;primaryKey;autoIncrement:true;comment:自增" json:"id"`                       // 自增
+	MessageID int64          `gorm:"column:message_id;not null;comment:消息ID" json:"messageId"`                           // 消息ID
+	Receiver  int64          `gorm:"column:receiver;not null;comment:消息接收人" json:"receiver"`                             // 消息接收人
+	IsRead    int32          `gorm:"column:is_read;not null;comment:是否已读：0-未读；1-已读；" json:"isRead"`                      // 是否已读：0-未读；1-已读；
+	CreatedAt time.Time      `gorm:"column:created_at;not null;default:CURRENT_TIMESTAMP;comment:创建时间" json:"createdAt"` // 创建时间
+	UpdatedAt time.Time      `gorm:"column:updated_at;not null;default:CURRENT_TIMESTAMP;comment:更新时间" json:"updatedAt"` // 更新时间
+	DeletedAt gorm.DeletedAt `gorm:"column:deleted_at;comment:删除时间" json:"deletedAt"`                                    // 删除时间
 }
 
 // TableName MessageUser's table name

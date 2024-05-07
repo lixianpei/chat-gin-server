@@ -154,7 +154,7 @@ func PhoneLogin(c *gin.Context) {
 	}
 
 	helper.ResponseOkWithMessageData(c, gin.H{
-		"user_id":  mUserInfo.ID,
+		"userId":   mUserInfo.ID,
 		"token":    token,
 		"phone":    loginForm.Phone,
 		"nickname": loginForm.Nickname,
@@ -219,7 +219,7 @@ func WxUserInfoSave(c *gin.Context) {
 	//返回数据
 	helper.ResponseOkWithData(c, gin.H{
 		"wxUserForm": form,
-		"user_id":    c.GetInt64(consts.UserId),
+		"userId":     c.GetInt64(consts.UserId),
 	})
 }
 
@@ -292,96 +292,6 @@ func UploadFile(c *gin.Context) {
 	})
 }
 
-type SendMessageForm struct {
-	//Type     string `form:"type" binding:"required"`//消息类型
-	Content  string `form:"content" json:"content" binding:"required"`   //消息类型
-	Receiver int64  `form:"receiver" json:"receiver" binding:"required"` //消息接收的用户ID
-}
-
-func SendMessage(c *gin.Context) {
-	var form SendMessageForm
-	err := c.ShouldBind(&form)
-	if err != nil {
-		helper.ResponseError(c, err.Error())
-		return
-	}
-
-	mUser, err := service.User.GetLoginUser(c)
-	if err != nil {
-		helper.ResponseError(c, fmt.Sprintf("用户不存在：%d", c.GetInt64(consts.UserId)))
-		return
-	}
-
-	//消息内容
-	mMessage := chat_model.Message{
-		Sender:  mUser.ID,
-		Content: form.Content,
-	}
-	//消息关联的用户
-	messageUsers := make([]*chat_model.MessageUser, 0)
-
-	//消息入库
-	err = helper.DbQuery.Transaction(func(tx *chat_query.Query) error {
-		//保存消息
-		err = tx.WithContext(c).Message.Create(&mMessage)
-		if err != nil {
-			return err
-		}
-
-		//查询消息关联的用户,TODO 暂时查询全量用户
-		users := make([]*chat_model.User, 0)
-		err = tx.WithContext(c).User.Scan(&users)
-		if err != nil {
-			return err
-		}
-
-		for _, user := range users {
-			messageUsers = append(messageUsers, &chat_model.MessageUser{
-				MessageID: mMessage.ID,
-				Receiver:  user.ID,
-				IsRead:    0,
-			})
-		}
-		if len(messageUsers) > 0 {
-			err = tx.WithContext(c).MessageUser.Create(messageUsers...)
-			if err != nil {
-				return err
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		helper.ResponseError(c, err.Error())
-		return
-	}
-
-	//消息推入消息中心：
-	if len(messageUsers) > 0 {
-		for _, messageUser := range messageUsers {
-			message := ws.Message{
-				MessageId: mMessage.ID,
-				Type:      consts.MessageTypeNormal,
-				Sender:    mUser.ID,
-				Receiver:  form.Receiver,
-				GroupId:   0,
-				Data:      form.Content,
-				Time:      time.Now().Local().Format(time.DateTime),
-			}
-
-			messageJsonByte, err := json.Marshal(message)
-			if err != nil {
-				helper.Logger.Errorf("消息[%d]Marshal失败：%s", message.MessageId, err.Error())
-				continue
-			}
-			ws.IM.SendMessageByUserId(messageJsonByte, messageUser.Receiver)
-		}
-	}
-
-	helper.ResponseOkWithData(c, gin.H{
-		"message_id": mMessage.ID,
-	})
-}
-
 type SearchUserForm struct {
 	Keyword string `form:"keyword" json:"keyword" binding:"required"`
 }
@@ -419,7 +329,7 @@ type UserDetailForm struct {
 type UserDetailInfo struct {
 	ID        int64  `gorm:"column:id;primaryKey;autoIncrement:true;comment:自增" json:"id"` // 自增
 	Phone     string `gorm:"column:phone;not null;comment:用户手机号" json:"phone"`             // 用户手机号
-	UserName  string `gorm:"column:user_name;not null;comment:用户名称" json:"user_name"`      // 用户名称
+	UserName  string `gorm:"column:user_name;not null;comment:用户名称" json:"userName"`       // 用户名称
 	Nickname  string `gorm:"column:nickname;not null;comment:用户昵称" json:"nickname"`        // 用户昵称
 	Gender    int32  `gorm:"column:gender;not null;default:-1;comment:性别" json:"gender"`   // 性别
 	Avatar    string `gorm:"column:avatar;not null;comment:头像" json:"avatar"`              // 头像
@@ -503,17 +413,10 @@ func ApplyFriend(c *gin.Context) {
 		helper.ResponseError(c, "您已经申请添加对方为好友，请勿重复操作，请耐心等待您的好友同意")
 		return
 	}
-
-	notifyMessage := ws.Message{
-		Type:     consts.MessageTypeAddFriend,
-		Sender:   user.ID,
-		Receiver: friend.ID,
-		Data:     "",
-	}
 	err = helper.DbQuery.Transaction(func(tx *chat_query.Query) error {
 		quc := tx.UserContact
 		//添加自己的数据
-		err = quc.Select(quc.UserID, quc.FriendUserID, quc.Status).Create(&chat_model.UserContact{
+		err = quc.WithContext(c).Select(quc.UserID, quc.FriendUserID, quc.Status).Create(&chat_model.UserContact{
 			UserID:       user.ID,
 			FriendUserID: friend.ID,
 			Status:       consts.UserFriendStatusIsFriend, //直接添加为好友，暂时去掉审核操作
@@ -523,7 +426,7 @@ func ApplyFriend(c *gin.Context) {
 		}
 
 		//添加好友的数据
-		err = quc.Select(quc.UserID, quc.FriendUserID, quc.Status).Create(&chat_model.UserContact{
+		err = quc.WithContext(c).Select(quc.UserID, quc.FriendUserID, quc.Status).Create(&chat_model.UserContact{
 			UserID:       friend.ID,
 			FriendUserID: user.ID,
 			Status:       consts.UserFriendStatusIsFriend, //直接添加为好友，暂时去掉审核操作
@@ -531,18 +434,43 @@ func ApplyFriend(c *gin.Context) {
 		if err != nil {
 			return err
 		}
+
+		//新增群聊：当前用户和好友作为一个私聊
+		qr := tx.Room
+		qru := tx.RoomUser
+		chatData := &chat_model.Room{
+			Title:         "",
+			CreatedUserID: user.ID,
+			Type:          consts.RoomTypeSingle,
+			UserCount:     2,
+		}
+		err = qr.WithContext(c).Select(qr.Title, qr.CreatedUserID, qr.Type).Create(chatData)
+		if err != nil {
+			return err
+		}
+
+		//新增聊天关联的用户
+		chatUser1 := &chat_model.RoomUser{
+			RoomID:          chatData.ID,
+			UserID:          user.ID,
+			IsMessageRemind: consts.RoomUserIsMessageRemindYes,
+		}
+		chatUser2 := &chat_model.RoomUser{
+			RoomID:          chatData.ID,
+			UserID:          friend.ID,
+			IsMessageRemind: consts.RoomUserIsMessageRemindYes,
+		}
+		err = qru.WithContext(c).Select(qru.RoomID, qru.UserID, qru.IsMessageRemind).Create(chatUser1, chatUser2)
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 	if err != nil {
 		helper.ResponseError(c, err.Error())
 		return
 	}
-	//发送通知给被加好友的用户
-	notifyMessage.Data = fmt.Sprintf("用户【%s】添加您为好友", user.Nickname)
-
-	//消息通知
-	//notifyMessageJson, _ := json.Marshal(&notifyMessage)
-	//_, _ = ws.HandleMessageSaveAndSend(string(notifyMessageJson), user.ID)
 
 	helper.ResponseOk(c)
 }
@@ -559,12 +487,12 @@ func GetFriendContact(c *gin.Context) {
 	helper.ResponseOkWithData(c, friends)
 }
 
-type CreateGroupForm struct {
+type CreateRoomForm struct {
 	Title string `form:"title" json:"title" binding:"required"`
 }
 
-func CreateGroup(c *gin.Context) {
-	var form CreateGroupForm
+func CreateRoom(c *gin.Context) {
+	var form CreateRoomForm
 	if err := c.ShouldBind(&form); err != nil {
 		helper.ResponseError(c, err.Error())
 		return
@@ -576,21 +504,21 @@ func CreateGroup(c *gin.Context) {
 		return
 	}
 
-	mGroup := chat_model.Group{
+	mRoom := chat_model.Room{
 		Title:         form.Title,
 		CreatedUserID: mUser.ID,
 	}
 	err = helper.DbQuery.Transaction(func(tx *chat_query.Query) error {
-		qG := tx.Group
-		err = qG.WithContext(c).Select(qG.Title, qG.CreatedUserID).Create(&mGroup)
+		qr := tx.Room
+		err = qr.WithContext(c).Select(qr.Title, qr.CreatedUserID).Create(&mRoom)
 		if err != nil {
 			return err
 		}
 
-		qGu := tx.GroupUser
-		err = qGu.WithContext(c).Select(qGu.GroupID, qGu.UserID, qGu.IsMessageRemind).Create(&chat_model.GroupUser{
+		qru := tx.RoomUser
+		err = qru.WithContext(c).Select(qru.RoomID, qru.UserID, qru.IsMessageRemind).Create(&chat_model.RoomUser{
 			UserID:          mUser.ID,
-			GroupID:         mGroup.ID,
+			RoomID:          mRoom.ID,
 			IsMessageRemind: 1,
 		})
 		if err != nil {
@@ -607,49 +535,47 @@ func CreateGroup(c *gin.Context) {
 	})
 }
 
-type AddGroupUserForm struct {
-	GroupId int64   `form:"group_id" json:"group_id" binding:"required"`
-	UserIds []int64 `form:"user_ids" json:"user_ids" binding:"required"`
+type AddRoomUserForm struct {
+	RoomId  int64   `form:"roomId" json:"roomId" binding:"required"`
+	UserIds []int64 `form:"userIds" json:"userIds" binding:"required"`
 }
 
-func AddGroupUser(c *gin.Context) {
-	var form AddGroupUserForm
+func AddRoomUser(c *gin.Context) {
+	var form AddRoomUserForm
 	if err := c.ShouldBind(&form); err != nil {
 		helper.ResponseError(c, err.Error())
 		return
 	}
 
-	var group chat_model.Group
-	qGroup := helper.DbQuery.Group
-	err := qGroup.WithContext(c).Where(qGroup.ID.Eq(form.GroupId)).Scan(&group)
-	if err != nil || group.ID == 0 {
+	var room chat_model.Room
+	qr := helper.DbQuery.Room
+	err := qr.WithContext(c).Where(qr.ID.Eq(form.RoomId)).Scan(&room)
+	if err != nil || room.ID == 0 {
 		helper.ResponseError(c, "聊天群信息错误")
 		return
 	}
 
 	err = helper.DbQuery.Transaction(func(tx *chat_query.Query) error {
 		qUser := tx.User
-		qGroupUser := tx.GroupUser
+		qru := tx.RoomUser
 		users := make([]*chat_model.User, 0)
 		err = qUser.WithContext(c).
 			Select(qUser.ID).
-			LeftJoin(qGroupUser, qGroupUser.UserID.EqCol(qUser.ID)).
-			Where(qGroupUser.GroupID.Eq(form.GroupId)).
+			LeftJoin(qru, qru.UserID.EqCol(qUser.ID), qru.RoomID.Eq(form.RoomId), qru.DeletedAt.IsNull()).
 			Where(qUser.ID.In(form.UserIds...)).
-			Where(qGroupUser.ID.IsNull()).
+			Where(qru.ID.IsNull()).
 			Scan(&users)
 
-		mGroupUsers := make([]*chat_model.GroupUser, 0)
+		mGroupUsers := make([]*chat_model.RoomUser, 0)
 		for _, u := range users {
-			mGroupUsers = append(mGroupUsers, &chat_model.GroupUser{
+			mGroupUsers = append(mGroupUsers, &chat_model.RoomUser{
 				UserID:          u.ID,
-				GroupID:         form.GroupId,
+				RoomID:          form.RoomId,
 				IsMessageRemind: 1,
 			})
 		}
 
-		qGu := tx.GroupUser
-		err = qGu.WithContext(c).Select(qGu.GroupID, qGu.UserID, qGu.IsMessageRemind).Create(mGroupUsers...)
+		err = qru.WithContext(c).Select(qru.RoomID, qru.UserID, qru.IsMessageRemind).Create(mGroupUsers...)
 		if err != nil {
 			return err
 		}
@@ -662,70 +588,101 @@ func AddGroupUser(c *gin.Context) {
 	helper.ResponseOk(c)
 }
 
-// GetChatList 获取聊天列表
-func GetChatList(c *gin.Context) {
+// GetRoomList 获取聊天列表
+func GetRoomList(c *gin.Context) {
 	//获取发送给当前用户的好友列表
 	userId := c.GetInt64(consts.UserId)
 
-	//获取好友列表
-	contacts, _ := service.User.GetFriendContact(c, userId)
-	if len(contacts) == 0 {
-		helper.ResponseOkWithData(c, gin.H{})
-		return
-	}
-
-	//获取好友ID
-	friends := make([]int64, 0)
-	for _, v := range contacts {
-		friends = append(friends, v.ID)
-	}
-
-	//统计用户的未读消息总数
-	unReadMessageUsers, err := service.MessageService.GetUnreadMessageCount(c, userId, friends)
+	rooms := make([]*structs.RoomListItem, 0)
+	qr := helper.DbQuery.Room
+	qru := helper.DbQuery.RoomUser
+	qm := helper.DbQuery.Message
+	err := qr.WithContext(c).
+		Select(qr.ID.As("roomId"), qr.Title, qr.Type, qr.LastMessageID).
+		Join(qru, qru.RoomID.EqCol(qr.ID)).
+		LeftJoin(qm, qm.RoomID.EqCol(qr.LastMessageID)).
+		Where(qru.UserID.Eq(userId)).
+		Order(qr.UpdatedAt.Desc()).
+		Scan(&rooms)
 	if err != nil {
 		helper.ResponseError(c, err.Error())
 		return
 	}
 
-	//整理好友发送的消息未读总数
-	senderUnreadCount := map[int64]int64{}
-	for _, v := range unReadMessageUsers {
-		senderUnreadCount[v.Sender] = v.UnreadCount
-	}
-	fmt.Println(senderUnreadCount)
-	//统计发送消息给我的最后一条信息
-	lastMessages, err := service.MessageService.GetLastMessage(c, userId)
-	if err != nil {
-		helper.ResponseError(c, err.Error())
-		return
-	}
-	lastMessageMap := map[int64]*chat_model.Message{}
-	for _, v := range lastMessages {
-		v := v
-		lastMessageMap[v.Sender] = v
+	lastMessageIds := make([]int64, 0)
+	roomIds := make([]int64, 0)
+	for _, v := range rooms {
+		roomIds = append(roomIds, v.RoomId)
+		if v.LastMessageId > 0 {
+			lastMessageIds = append(lastMessageIds, v.LastMessageId)
+		}
 	}
 
-	//统计好友列表中对应的未读消息总数
-	for k, v := range contacts {
-		contacts[k].AvatarUrl = helper.GenerateStaticUrl(v.Avatar)
-		unreadCount, ok1 := senderUnreadCount[v.ID]
-		if ok1 {
-			contacts[k].UnreadCount = unreadCount
+	//获取用户
+	roomUsersMap, err := service.User.GetUsersMapByRoomIds(c, roomIds)
+
+	//获取所有聊天室中的最后一条消息
+	messages, err := service.MessageService.GetMessagesByIds(c, lastMessageIds)
+	messagesMap := map[int64]*structs.MessageListItem{}
+	for k, v := range messages {
+		messages[k].CreatedAt = helper.FormatTimeRFC3339ToDatetime(v.CreatedAt)
+		messagesMap[v.MessageId] = v
+	}
+
+	for k, v := range rooms {
+		//消息与聊天室关联
+		if lm, ok := messagesMap[v.LastMessageId]; ok {
+			rooms[k].LastMessage = lm
 		}
 
-		lastMessage, ok2 := lastMessageMap[v.ID]
-		if ok2 && lastMessage.ID > 0 {
-			contacts[k].LastMessage = lastMessage
+		//用户与聊天室关联
+		if l, ok := roomUsersMap[v.RoomId]; ok {
+			rooms[k].RoomUsers = l
 		}
 
-		v.LastLoginTime = helper.FormatTimeRFC3339ToDatetime(v.LastLoginTime)
+		//聊天室头像
+		rooms[k].AvatarUrls = formatRoomAvatar(v.RoomUsers, userId, v.Type)
+
+		//title
+		rooms[k].Title = formatRoomTitle(v, userId)
+
 	}
-	helper.ResponseOkWithData(c, contacts)
+	helper.ResponseOkWithData(c, rooms)
+}
+
+func formatRoomTitle(room *structs.RoomListItem, userId int64) string {
+	if len(room.RoomUsers) == 0 {
+		return ""
+	}
+	if room.Type == consts.RoomTypeGroup {
+		return room.Title
+	}
+	for _, v := range room.RoomUsers {
+		if room.Type == consts.RoomTypeSingle && v.UserID != userId {
+			//私聊返回好友的昵称
+			return v.Nickname
+		}
+	}
+	return ""
+}
+
+func formatRoomAvatar(users []*structs.RoomUserItem, userId int64, roomType int32) []string {
+	avatars := make([]string, 0)
+	if len(users) == 0 {
+		return avatars
+	}
+	for _, v := range users {
+		if roomType == consts.RoomTypeSingle && v.UserID == userId {
+			continue
+		}
+		avatars = append(avatars, v.AvatarUrl)
+	}
+	return avatars
 }
 
 type SetMessageReadStatusForm struct {
-	Sender  int64 `form:"sender" json:"sender"`
-	GroupId int64 `form:"groupId" json:"groupId"`
+	Sender int64 `form:"sender" json:"sender"`
+	RoomId int64 `form:"roomId" json:"roomId"`
 }
 
 // SetMessageReadStatus 设置消息阅读状态
@@ -736,7 +693,7 @@ func SetMessageReadStatus(c *gin.Context) {
 		return
 	}
 
-	if form.Sender == 0 && form.GroupId == 0 {
+	if form.Sender == 0 && form.RoomId == 0 {
 		helper.ResponseError(c, "参数错误")
 		return
 	}
@@ -745,12 +702,20 @@ func SetMessageReadStatus(c *gin.Context) {
 	messageIds := make([]int64, 0)
 	messages := make([]*chat_model.Message, 0)
 	qm := helper.DbQuery.Message
-	if form.GroupId > 0 {
-		//群聊消息
-		_ = qm.WithContext(c).Where(qm.GroupID.Eq(form.GroupId)).Scan(&messages)
-	} else if form.Sender > 0 {
+	//查询chat关联的用户
+	qru := helper.DbQuery.RoomUser
+	chatData := chat_model.Room{}
+	err := qru.WithContext(c).Where(qru.RoomID.Eq(form.RoomId)).Scan(&chatData)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+	if form.Sender > 0 {
 		//私聊消息
-		_ = qm.WithContext(c).Where(qm.GroupID.Eq(0), qm.Sender.Eq(form.Sender)).Scan(&messages)
+		_ = qm.WithContext(c).Where(qm.Sender.Eq(form.Sender)).Scan(&messages)
+	} else if form.RoomId > 0 {
+		//群聊消息，不管是谁发的群消息，一律设置为已读
+		_ = qm.WithContext(c).Where(qm.RoomID.Eq(form.RoomId)).Scan(&messages)
 	}
 
 	for _, v := range messages {
@@ -768,7 +733,7 @@ func SetMessageReadStatus(c *gin.Context) {
 
 type GetMessageListFrom struct {
 	Sender   []int64 `form:"sender" json:"sender"`
-	GroupId  int64   `json:"groupId" form:"groupId"`
+	ChatId   int64   `json:"chatId" form:"chatId"`
 	IsRead   int32   `json:"isRead" form:"isRead"`
 	Page     int     `json:"page" form:"page"`
 	PageSize int     `json:"pageSize" form:"pageSize"`
@@ -776,7 +741,7 @@ type GetMessageListFrom struct {
 type GetMessageListRes struct {
 	Id         int64             `json:"id"`
 	Sender     int64             `json:"sender"`
-	GroupID    int64             `json:"groupId"`
+	ChatId     int64             `json:"chatId"`
 	Source     int32             `json:"source"`
 	Type       int32             `json:"type"`
 	Content    string            `json:"content"`

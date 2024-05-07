@@ -47,3 +47,15 @@ const (
 	MessageTypeUserEntry  = 5 //消息类型-用户上线
 	MessageTypeUserExit   = 6 //消息类型-用户下线
 )
+
+const (
+	RoomTypeSingle = 1 //私聊
+	RoomTypeGroup  = 2 //群聊
+)
+
+const (
+	RoomUserIsMessageRemindYes = 1 //消息提醒
+	RoomUserIsMessageRemindNo  = 2 //消息免打扰
+	RoomUserIsTopYes           = 1 //置顶
+	RoomUserIsTopNo            = 2 //取消置顶
+)

@@ -17,20 +17,20 @@ import (
 
 var (
 	Q           = new(Query)
-	Group       *group
-	GroupUser   *groupUser
 	Message     *message
 	MessageUser *messageUser
+	Room        *room
+	RoomUser    *roomUser
 	User        *user
 	UserContact *userContact
 )
 
 func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 	*Q = *Use(db, opts...)
-	Group = &Q.Group
-	GroupUser = &Q.GroupUser
 	Message = &Q.Message
 	MessageUser = &Q.MessageUser
+	Room = &Q.Room
+	RoomUser = &Q.RoomUser
 	User = &Q.User
 	UserContact = &Q.UserContact
 }
@@ -38,10 +38,10 @@ func SetDefault(db *gorm.DB, opts ...gen.DOOption) {
 func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 	return &Query{
 		db:          db,
-		Group:       newGroup(db, opts...),
-		GroupUser:   newGroupUser(db, opts...),
 		Message:     newMessage(db, opts...),
 		MessageUser: newMessageUser(db, opts...),
+		Room:        newRoom(db, opts...),
+		RoomUser:    newRoomUser(db, opts...),
 		User:        newUser(db, opts...),
 		UserContact: newUserContact(db, opts...),
 	}
@@ -50,10 +50,10 @@ func Use(db *gorm.DB, opts ...gen.DOOption) *Query {
 type Query struct {
 	db *gorm.DB
 
-	Group       group
-	GroupUser   groupUser
 	Message     message
 	MessageUser messageUser
+	Room        room
+	RoomUser    roomUser
 	User        user
 	UserContact userContact
 }
@@ -63,10 +63,10 @@ func (q *Query) Available() bool { return q.db != nil }
 func (q *Query) clone(db *gorm.DB) *Query {
 	return &Query{
 		db:          db,
-		Group:       q.Group.clone(db),
-		GroupUser:   q.GroupUser.clone(db),
 		Message:     q.Message.clone(db),
 		MessageUser: q.MessageUser.clone(db),
+		Room:        q.Room.clone(db),
+		RoomUser:    q.RoomUser.clone(db),
 		User:        q.User.clone(db),
 		UserContact: q.UserContact.clone(db),
 	}
@@ -83,30 +83,30 @@ func (q *Query) WriteDB() *Query {
 func (q *Query) ReplaceDB(db *gorm.DB) *Query {
 	return &Query{
 		db:          db,
-		Group:       q.Group.replaceDB(db),
-		GroupUser:   q.GroupUser.replaceDB(db),
 		Message:     q.Message.replaceDB(db),
 		MessageUser: q.MessageUser.replaceDB(db),
+		Room:        q.Room.replaceDB(db),
+		RoomUser:    q.RoomUser.replaceDB(db),
 		User:        q.User.replaceDB(db),
 		UserContact: q.UserContact.replaceDB(db),
 	}
 }
 
 type queryCtx struct {
-	Group       IGroupDo
-	GroupUser   IGroupUserDo
 	Message     IMessageDo
 	MessageUser IMessageUserDo
+	Room        IRoomDo
+	RoomUser    IRoomUserDo
 	User        IUserDo
 	UserContact IUserContactDo
 }
 
 func (q *Query) WithContext(ctx context.Context) *queryCtx {
 	return &queryCtx{
-		Group:       q.Group.WithContext(ctx),
-		GroupUser:   q.GroupUser.WithContext(ctx),
 		Message:     q.Message.WithContext(ctx),
 		MessageUser: q.MessageUser.WithContext(ctx),
+		Room:        q.Room.WithContext(ctx),
+		RoomUser:    q.RoomUser.WithContext(ctx),
 		User:        q.User.WithContext(ctx),
 		UserContact: q.UserContact.WithContext(ctx),
 	}

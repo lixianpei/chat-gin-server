@@ -47,17 +47,43 @@ func (u *user) GetMessageUserById(userId int64) (*structs.UserItem, error) {
 	return &mUser, nil
 }
 
-func (u *user) GetUsersByGroupId(groupId int64) ([]*structs.UserItem, error) {
-	qGU := helper.DbQuery.GroupUser
+func (u *user) GetUsersByRoomId(roomId int64) ([]*structs.UserItem, error) {
+	qru := helper.DbQuery.RoomUser
 	qU := helper.DbQuery.User
 	users := make([]*structs.UserItem, 0)
-	err := qGU.Join(qU, qU.ID.EqCol(qGU.UserID)).
+	err := qru.Join(qU, qU.ID.EqCol(qru.UserID)).
 		Select(qU.ALL).
-		Where(qGU.GroupID.Eq(groupId)).Scan(&users)
+		Where(qru.RoomID.Eq(roomId)).
+		Scan(&users)
 	return users, err
 }
 
-func (u *user) GetMessageReceiverUsers(groupId int64, receiver int64) ([]*structs.UserItem, error) {
+func (u *user) GetUsersMapByRoomIds(c *gin.Context, roomIds []int64) (usersMap map[int64][]*structs.RoomUserItem, err error) {
+	if len(roomIds) == 0 {
+		return
+	}
+	qru := helper.DbQuery.RoomUser
+	qu := helper.DbQuery.User
+	users := make([]*structs.RoomUserItem, 0)
+	usersMap = make(map[int64][]*structs.RoomUserItem)
+	err = qru.WithContext(c).
+		Join(qu, qu.ID.EqCol(qru.UserID)).
+		Select(qru.UserID, qu.Phone, qu.UserName, qu.Nickname, qu.Gender, qu.Avatar, qru.RoomID.As("roomId")).
+		Where(qru.RoomID.In(roomIds...)).
+		Scan(&users)
+	for k, v := range users {
+		if v.UserID > 0 {
+			users[k].AvatarUrl = helper.GenerateStaticUrl(v.Avatar)
+			if _, ok := usersMap[v.RoomId]; !ok {
+				usersMap[v.RoomId] = make([]*structs.RoomUserItem, 0)
+			}
+			usersMap[v.RoomId] = append(usersMap[v.RoomId], v)
+		}
+	}
+	return usersMap, err
+}
+
+func (u *user) GetMessageReceiverUsers(roomId int64, receiver int64) ([]*structs.UserItem, error) {
 	users := make([]*structs.UserItem, 0)
 	qUser := helper.DbQuery.User
 
@@ -69,13 +95,11 @@ func (u *user) GetMessageReceiverUsers(groupId int64, receiver int64) ([]*struct
 			users = append(users, userInfo)
 		}
 		return users, err
-	case groupId > 0:
-		//群消息：暂时当做广播消息发送出去 TODO 查询全部用户
-		fmt.Println("群消息")
-		return u.GetUsersByGroupId(groupId)
+	case roomId > 0:
+		//群聊消息
+		return u.GetUsersByRoomId(roomId)
 	default:
 		//广播消息
-		fmt.Println("广播消息")
 		err := qUser.Scan(&users)
 		return users, err
 	}

@@ -15,7 +15,7 @@ func TestMain(m *testing.M) {
 	helper.InitLogger()
 	helper.InitRedis()
 
-	helper.InitChatDatabase()
+	//helper.InitChatDatabase()
 
 	fmt.Println("TestMain...")
 	os.Exit(m.Run())
@@ -28,7 +28,7 @@ type messageUser struct {
 }
 
 func TestDb(t *testing.T) {
-	fmt.Println(helper.FormatTimeToDatetime("2024-05-02T15:24:30+08:00"))
+	//fmt.Println(helper.FormatTimeToDatetime("2024-05-02T15:24:30+08:00"))
 
 	//c := &gin.Context{Request: &http.Request{}}
 

@@ -1,6 +1,7 @@
 package test
 
 import (
+	"GoChatServer/helper"
 	"fmt"
 	"gorm.io/gen"
 	"gorm.io/gorm"
@@ -17,6 +18,9 @@ func TestSqlGen(t *testing.T) {
 		Mode:         gen.WithoutContext | gen.WithDefaultQuery | gen.WithQueryInterface, // generate mode
 		WithUnitTest: false,
 	})
+	g.WithJSONTagNameStrategy(func(c string) string {
+		return helper.UnderscoreCamelCase(c) //指定生成的model对应数据表字段json格式化为驼峰
+	})
 	gormDb, _ := gorm.Open(rawsql.New(rawsql.Config{
 		FilePath: []string{
 			fmt.Sprintf("./sql/%s.sql", dbName),
@@ -27,4 +31,9 @@ func TestSqlGen(t *testing.T) {
 		g.GenerateAllTable()...,
 	)
 	g.Execute()
+}
+
+func TestS(t *testing.T) {
+	str := "abc_Def_ggg"
+	fmt.Println(helper.UnderscoreCamelCase(str))
 }
