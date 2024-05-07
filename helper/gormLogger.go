@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
 	gormLogger "gorm.io/gorm/logger"
+	"log"
 	"time"
 )
 
@@ -47,6 +48,7 @@ func (l *GormLogger) Error(ctx context.Context, msg string, data ...interface{})
 // Trace 实现 GORM Logger 接口的 Trace 方法
 func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (string, int64), err error) {
 	sql, rows := fc()
+	log.Println(sql)
 	//构造SQL日志内容
 	sqlLogContent := fmt.Sprintf("GormLogger:time=[%s],rows=[%d],SQL: %s", time.Since(begin).String(), rows, sql)
 	//在ctx中获取到Gin的上下文，然后通过把当前sql设置上下文中，返回数据时直接读取

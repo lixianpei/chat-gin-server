@@ -36,9 +36,13 @@ func InitRoute(e *gin.Engine) {
 		apiRouter.POST("/im/getOnlineList", api.GetOnlineList)
 		apiRouter.POST("/im/upload", api.UploadFile)
 		apiRouter.POST("/im/searchUser", api.SearchUser)
+		apiRouter.POST("/im/userDetail", api.UserDetail)
 		apiRouter.POST("/im/addFriend", api.ApplyFriend)
 		apiRouter.POST("/im/getFriendContact", api.GetFriendContact)
 		apiRouter.POST("/im/createGroup", api.CreateGroup)
 		apiRouter.POST("/im/addGroupUser", api.AddGroupUser)
+		apiRouter.POST("/im/getChatList", api.GetChatList)
+		apiRouter.POST("/im/setMessageReadStatus", api.SetMessageReadStatus)
+		apiRouter.POST("/im/getMessageList", api.GetMessageList)
 	}
 }

@@ -1,7 +1,7 @@
 DROP TABLE `user`;
+DROP TABLE user_contact;
 DROP TABLE message;
 DROP TABLE message_user;
-DROP TABLE user_contact;
 DROP TABLE `group`;
 DROP TABLE `group_user`;
 
@@ -24,10 +24,24 @@ CREATE TABLE `user` (
                         KEY `idx_phone` (`phone`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户信息';
 
+CREATE TABLE `user_contact` (
+                                `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增',
+                                `user_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '用户1-申请人',
+                                `friend_user_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '用户2-被申请添加好友的人',
+                                `status` tinyint(2) unsigned NOT NULL DEFAULT '0' COMMENT '1-申请中；2-好友；3-拒绝；',
+                                `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                                `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
+                                PRIMARY KEY (`id`),
+                                KEY `idx_user` (`user_id`,`friend_user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户联系人';
+
 CREATE TABLE `message` (
                            `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增',
                            `sender` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '消息发送人',
-                           `type` varchar(32) NOT NULL DEFAULT '' COMMENT '消息类型',
+                           `group_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '群ID',
+                           `source` tinyint(2) unsigned NOT NULL DEFAULT '0' COMMENT '消息来源：1-私聊消息；2-群聊消息；',
+                           `type` tinyint(2) unsigned NOT NULL DEFAULT '0' COMMENT '消息类型: 1-普通文本消息；2-用户加入群聊消息；3-加好友消息；4-二进制类型；5-用户上线；6-用户下线；',
                            `content` text NOT NULL COMMENT '消息内容',
                            `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                            `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -48,18 +62,6 @@ CREATE TABLE `message_user` (
                                 KEY `idx_message_id` (`message_id`),
                                 KEY `idx_sender` (`receiver`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息-用户';
-
-CREATE TABLE `user_contact` (
-                                `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增',
-                                `user_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '用户1-申请人',
-                                `friend_user_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '用户2-被申请添加好友的人',
-                                `status` tinyint(2) unsigned NOT NULL DEFAULT '0' COMMENT '1-申请中；2-好友；3-拒绝；',
-                                `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-                                `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-                                `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
-                                PRIMARY KEY (`id`),
-                                KEY `idx_user` (`user_id`,`friend_user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户联系人';
 
 CREATE TABLE `group` (
                          `id` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT '自增',
