@@ -3,7 +3,7 @@ package service
 import (
 	"GoChatServer/consts"
 	"GoChatServer/dal/model/chat_model"
-	"GoChatServer/dal/structs"
+	"GoChatServer/dal/types"
 	"GoChatServer/helper"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -35,10 +35,10 @@ func (u *user) GetUserById(userId int64) (*chat_model.User, error) {
 	return &mUser, nil
 }
 
-func (u *user) GetMessageUserById(userId int64) (*structs.UserItem, error) {
+func (u *user) GetMessageUserById(userId int64) (*types.UserItem, error) {
 	//获取当前用户信息
 	qUser := helper.DbQuery.User
-	mUser := structs.UserItem{}
+	mUser := types.UserItem{}
 	err := qUser.Select(qUser.ID, qUser.Nickname, qUser.UserName, qUser.Phone, qUser.Avatar).Where(qUser.ID.Eq(userId)).Scan(&mUser)
 	if err != nil || mUser.ID == 0 {
 		return nil, fmt.Errorf("用户不存在")
@@ -47,10 +47,10 @@ func (u *user) GetMessageUserById(userId int64) (*structs.UserItem, error) {
 	return &mUser, nil
 }
 
-func (u *user) GetUsersByRoomId(roomId int64) ([]*structs.UserItem, error) {
+func (u *user) GetUsersByRoomId(roomId int64) ([]*types.UserItem, error) {
 	qru := helper.DbQuery.RoomUser
 	qU := helper.DbQuery.User
-	users := make([]*structs.UserItem, 0)
+	users := make([]*types.UserItem, 0)
 	err := qru.Join(qU, qU.ID.EqCol(qru.UserID)).
 		Select(qU.ALL).
 		Where(qru.RoomID.Eq(roomId)).
@@ -58,14 +58,14 @@ func (u *user) GetUsersByRoomId(roomId int64) ([]*structs.UserItem, error) {
 	return users, err
 }
 
-func (u *user) GetUsersMapByRoomIds(c *gin.Context, roomIds []int64) (usersMap map[int64][]*structs.RoomUserItem, err error) {
+func (u *user) GetUsersMapByRoomIds(c *gin.Context, roomIds []int64) (usersMap map[int64][]*types.RoomUserItem, err error) {
 	if len(roomIds) == 0 {
 		return
 	}
 	qru := helper.DbQuery.RoomUser
 	qu := helper.DbQuery.User
-	users := make([]*structs.RoomUserItem, 0)
-	usersMap = make(map[int64][]*structs.RoomUserItem)
+	users := make([]*types.RoomUserItem, 0)
+	usersMap = make(map[int64][]*types.RoomUserItem)
 	err = qru.WithContext(c).
 		Join(qu, qu.ID.EqCol(qru.UserID)).
 		Select(qru.UserID, qu.Phone, qu.UserName, qu.Nickname, qu.Gender, qu.Avatar, qru.RoomID.As("roomId")).
@@ -75,7 +75,7 @@ func (u *user) GetUsersMapByRoomIds(c *gin.Context, roomIds []int64) (usersMap m
 		if v.UserID > 0 {
 			users[k].AvatarUrl = helper.GenerateStaticUrl(v.Avatar)
 			if _, ok := usersMap[v.RoomId]; !ok {
-				usersMap[v.RoomId] = make([]*structs.RoomUserItem, 0)
+				usersMap[v.RoomId] = make([]*types.RoomUserItem, 0)
 			}
 			usersMap[v.RoomId] = append(usersMap[v.RoomId], v)
 		}
@@ -83,18 +83,11 @@ func (u *user) GetUsersMapByRoomIds(c *gin.Context, roomIds []int64) (usersMap m
 	return usersMap, err
 }
 
-func (u *user) GetMessageReceiverUsers(roomId int64, receiver int64) ([]*structs.UserItem, error) {
-	users := make([]*structs.UserItem, 0)
+func (u *user) GetMessageReceiverUsers(roomId int64) ([]*types.UserItem, error) {
+	users := make([]*types.UserItem, 0)
 	qUser := helper.DbQuery.User
 
 	switch {
-	case receiver > 0:
-		//私聊消息
-		userInfo, err := u.GetMessageUserById(receiver)
-		if userInfo != nil {
-			users = append(users, userInfo)
-		}
-		return users, err
 	case roomId > 0:
 		//群聊消息
 		return u.GetUsersByRoomId(roomId)

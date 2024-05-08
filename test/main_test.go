@@ -1,12 +1,14 @@
 package test
 
 import (
+	"GoChatServer/consts"
 	"GoChatServer/helper"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"os"
 	"testing"
+	"time"
 )
 
 func TestMain(m *testing.M) {
@@ -71,4 +73,9 @@ func TestRedis(t *testing.T) {
 	//fmt.Println(helper.Redis.Lock(c, "a1", time.Hour))
 
 	fmt.Println(helper.Redis.Del(c, "a", "a1"))
+}
+
+func TestFile(t *testing.T) {
+	dateYmd := time.Now().Local().Format(consts.DateYMD)
+	fmt.Println(dateYmd)
 }

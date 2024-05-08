@@ -1,4 +1,4 @@
-package structs
+package types
 
 type MessageListItem struct {
 	MessageId  int64                `gorm:"column:messageId" json:"messageId"`
@@ -18,4 +18,9 @@ type MessageListUserItem struct {
 	Gender    int32  `json:"gender"`                      // 性别
 	Avatar    string `json:"avatar"`                      // 头像
 	AvatarUrl string `json:"avatarUrl" gorm:"-"`
+}
+
+type MessageFileInfo struct {
+	AttachmentId int64  `json:"attachmentId"`
+	Filepath     string `json:"filepath"`
 }

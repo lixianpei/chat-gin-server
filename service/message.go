@@ -3,7 +3,7 @@ package service
 import (
 	"GoChatServer/consts"
 	"GoChatServer/dal/model/chat_model"
-	"GoChatServer/dal/structs"
+	"GoChatServer/dal/types"
 	"GoChatServer/helper"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -44,7 +44,7 @@ func (m *ms) GetLastMessage(c *gin.Context, userId int64) ([]*chat_model.Message
 	return messages, res.Error
 }
 
-func (m *ms) GetMessagesByIds(c *gin.Context, ids []int64) (messages []*structs.MessageListItem, err error) {
+func (m *ms) GetMessagesByIds(c *gin.Context, ids []int64) (messages []*types.MessageListItem, err error) {
 	if len(ids) == 0 {
 		return
 	}
@@ -64,9 +64,9 @@ func (m *ms) GetMessagesByIds(c *gin.Context, ids []int64) (messages []*structs.
 	}
 
 	//获取消息发送的用户列表
-	users := make([]*structs.MessageListUserItem, 0)
+	users := make([]*types.MessageListUserItem, 0)
 	err = qu.WithContext(c).Select(qu.ALL, qu.ID.As("userId")).Where(qu.ID.In(userIds...)).Scan(&users)
-	usersMap := make(map[int64]*structs.MessageListUserItem)
+	usersMap := make(map[int64]*types.MessageListUserItem)
 	for k, v := range users {
 		users[k].AvatarUrl = helper.GenerateStaticUrl(v.Avatar)
 		usersMap[v.UserID] = v

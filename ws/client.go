@@ -1,7 +1,7 @@
 package ws
 
 import (
-	"GoChatServer/dal/structs"
+	"GoChatServer/dal/types"
 	"GoChatServer/helper"
 	"GoChatServer/service"
 	"fmt"
@@ -41,7 +41,7 @@ const (
 )
 
 type Client struct {
-	//im在线管理，后期可以
+	//im在线管理
 	clientManager *ClientManager
 
 	//websocket connection
@@ -50,8 +50,12 @@ type Client struct {
 	//Buffered channel of outbound messages. 出站消息的缓冲通道
 	send chan []byte
 
-	userId   int64
-	userInfo *structs.UserItem
+	userId         int64
+	userInfo       *types.UserItem
+	writeWait      time.Duration
+	pongWait       time.Duration
+	pingPeriod     time.Duration
+	maxMessageSize int64
 }
 
 var upGrader = websocket.Upgrader{
@@ -73,13 +77,13 @@ func (c *Client) readPump() {
 		c.clientManager.unregister <- c
 		_ = c.conn.Close()
 	}()
-	c.conn.SetReadLimit(maxMessageSize)
-	err := c.conn.SetReadDeadline(time.Now().Add(pongWait))
+	c.conn.SetReadLimit(c.maxMessageSize)
+	err := c.conn.SetReadDeadline(time.Now().Add(c.pongWait))
 	if err != nil {
 		fmt.Println("SetReadDeadlineError:", err.Error())
 	}
 	c.conn.SetPongHandler(func(string) error {
-		err = c.conn.SetReadDeadline(time.Now().Add(pongWait))
+		err = c.conn.SetReadDeadline(time.Now().Add(c.pongWait))
 		if err != nil {
 			fmt.Println("SetPongHandlerSetReadDeadlineError:", err.Error())
 		}
@@ -113,7 +117,7 @@ func (c *Client) readPump() {
 // application ensures that there is at most one writer to a connection by
 // executing all writes from this goroutine.
 func (c *Client) writePump() {
-	ticker := time.NewTicker(pingPeriod)
+	ticker := time.NewTicker(c.pingPeriod)
 	defer func() {
 		ticker.Stop()
 		_ = c.conn.Close()
@@ -121,7 +125,7 @@ func (c *Client) writePump() {
 	for {
 		select {
 		case message, ok := <-c.send:
-			_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			_ = c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
 			if !ok {
 				// The hub closed the channel.
 				_ = c.conn.WriteMessage(websocket.CloseMessage, []byte{})
@@ -162,7 +166,7 @@ func (c *Client) writePump() {
 		case <-ticker.C:
 			//触发服务端ping客户端的定时器
 			fmt.Printf("服务端主动发送ping消息给客户端：%d ,time:%s \r\n", c.userId, time.Now().Local().Format(time.DateTime))
-			_ = c.conn.SetWriteDeadline(time.Now().Add(writeWait))
+			_ = c.conn.SetWriteDeadline(time.Now().Add(c.writeWait))
 			if err := c.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
 				fmt.Printf("服务端主动发送ping消息给客户端：%d ，发现错误：%s \r\n", c.userId, err.Error())
 				return
@@ -208,6 +212,11 @@ func serveWs(manager *ClientManager, w http.ResponseWriter, r *http.Request) {
 		userInfo:      userInfo,
 	}
 	client.clientManager.register <- client
+	client.writeWait = time.Second * time.Duration(helper.Configs.Websocket.WriteWait)
+	client.pongWait = time.Second * time.Duration(helper.Configs.Websocket.PongWait)
+	client.pingPeriod = (client.pongWait * 9) / 10
+	client.maxMessageSize = helper.Configs.Websocket.MaxMessageSize
+
 	helper.Logger.Infof("新用户连接ws：%+v", client)
 
 	// Allow collection of memory referenced by the caller by doing all work in

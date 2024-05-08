@@ -4,16 +4,16 @@ import (
 	"GoChatServer/consts"
 	"GoChatServer/dal/model/chat_model"
 	"GoChatServer/dal/query/chat_query"
-	"GoChatServer/dal/structs"
+	"GoChatServer/dal/types"
 	"GoChatServer/helper"
 	"GoChatServer/service"
 	"GoChatServer/ws"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	uuid "github.com/satori/go.uuid"
 	"gorm.io/gen"
-	"path"
+	filepath2 "path/filepath"
+	"strings"
 	"time"
 )
 
@@ -276,21 +276,100 @@ func UploadFile(c *gin.Context) {
 		return
 	}
 
-	uuider := uuid.NewV4()
-	filepath := path.Join("avatars", uuider.String()+path.Ext(file.Filename))
-	dst := path.Join(helper.Configs.Server.UploadFilePath, filepath)
+	//文件格式检测
+	err = helper.UploadFileCheck(file)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
 
-	// 上传文件至指定的完整文件路径
-	err = c.SaveUploadedFile(file, dst)
+	//文件上传
+	subject := c.DefaultPostForm("subject", "common")
+	filepath, err := helper.UploadFile(c, file, subject)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+
+	//文件保存
+	attachment := &chat_model.Attachment{
+		Filename:  file.Filename,
+		Size:      file.Size,
+		Type:      file.Header.Get("Content-Type"),
+		Extension: strings.ToLower(strings.Trim(filepath2.Ext(filepath), ".")),
+		Path:      filepath,
+		UserID:    c.GetInt64(consts.UserId),
+	}
+
+	err = helper.DbQuery.WithContext(c).Attachment.Create(attachment)
 	if err != nil {
 		helper.ResponseError(c, err.Error())
 		return
 	}
 
 	helper.ResponseOkWithData(c, gin.H{
-		"filepath": filepath,                           //数据库存储的文件路径
-		"url":      helper.GenerateStaticUrl(filepath), //访问文件的url
+		"filepath":     filepath,                           //数据库存储的文件路径
+		"url":          helper.GenerateStaticUrl(filepath), //访问文件的url
+		"attachmentId": attachment.ID,
 	})
+}
+
+// UploadFiles 文件批量上传
+func UploadFiles(c *gin.Context) {
+	form, err := c.MultipartForm()
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+	if len(form.File["files"]) == 0 {
+		helper.ResponseError(c, "请上传文件！")
+		return
+	}
+	subject := c.DefaultPostForm("subject", "common")
+	//检测文件
+	for _, v := range form.File["files"] {
+		if err := helper.UploadFileCheck(v); err != nil {
+			helper.ResponseError(c, err.Error())
+			return
+		}
+	}
+
+	attachments := make([]*chat_model.Attachment, 0)
+	for _, v := range form.File["files"] {
+		newFilepath, err := helper.UploadFile(c, v, subject)
+		if err != nil {
+			helper.ResponseError(c, err.Error())
+			return
+		}
+		//文件保存
+		attachment := &chat_model.Attachment{
+			Filename:  v.Filename,
+			Size:      v.Size,
+			Type:      v.Header.Get("Content-Type"),
+			Extension: strings.ToLower(strings.Trim(filepath2.Ext(v.Filename), ".")),
+			Path:      newFilepath,
+			UserID:    c.GetInt64(consts.UserId),
+		}
+		attachments = append(attachments, attachment)
+	}
+
+	retAttachments := make([]interface{}, 0)
+	if len(attachments) > 0 {
+		err = helper.DbQuery.WithContext(c).Attachment.Create(attachments...)
+		if err != nil {
+			helper.ResponseError(c, err.Error())
+			return
+		}
+		for _, v := range attachments {
+			retAttachments = append(retAttachments, gin.H{
+				"filepath":     v.Path,                           //数据库存储的文件路径
+				"url":          helper.GenerateStaticUrl(v.Path), //访问文件的url
+				"attachmentId": v.ID,
+			})
+		}
+	}
+
+	helper.ResponseOkWithData(c, retAttachments)
 }
 
 type SearchUserForm struct {
@@ -595,7 +674,7 @@ func GetRoomList(c *gin.Context) {
 	userId := c.GetInt64(consts.UserId)
 	roomId := c.GetInt64("roomId")
 
-	rooms := make([]*structs.RoomListItem, 0)
+	rooms := make([]*types.RoomListItem, 0)
 	qr := helper.DbQuery.Room
 	qru := helper.DbQuery.RoomUser
 	qm := helper.DbQuery.Message
@@ -606,7 +685,6 @@ func GetRoomList(c *gin.Context) {
 		where = append(where, qr.ID.Eq(roomId))
 	}
 
-	//TODO：去掉LeftJoin，最后一条
 	err := qr.WithContext(c).
 		Select(qr.ID.As("roomId"), qr.Title, qr.Type, qr.LastMessageID).
 		Join(qru, qru.RoomID.EqCol(qr.ID)).
@@ -633,7 +711,7 @@ func GetRoomList(c *gin.Context) {
 
 	//获取所有聊天室中的最后一条消息
 	messages, err := service.MessageService.GetMessagesByIds(c, lastMessageIds)
-	messagesMap := map[int64]*structs.MessageListItem{}
+	messagesMap := map[int64]*types.MessageListItem{}
 	for k, v := range messages {
 		messages[k].CreatedAt = helper.FormatTimeRFC3339ToDatetime(v.CreatedAt)
 		messagesMap[v.MessageId] = v
@@ -660,7 +738,7 @@ func GetRoomList(c *gin.Context) {
 	helper.ResponseOkWithData(c, rooms)
 }
 
-func formatRoomTitle(room *structs.RoomListItem, userId int64) string {
+func formatRoomTitle(room *types.RoomListItem, userId int64) string {
 	if len(room.RoomUsers) == 0 {
 		return ""
 	}
@@ -676,7 +754,7 @@ func formatRoomTitle(room *structs.RoomListItem, userId int64) string {
 	return ""
 }
 
-func formatRoomAvatar(users []*structs.RoomUserItem, userId int64, roomType int32) []string {
+func formatRoomAvatar(users []*types.RoomUserItem, userId int64, roomType int32) []string {
 	avatars := make([]string, 0)
 	if len(users) == 0 {
 		return avatars
@@ -741,14 +819,14 @@ type GetMessageListFrom struct {
 	PageSize int   `json:"pageSize" form:"pageSize"`
 }
 type GetMessageListRes struct {
-	Id         int64             `json:"id"`
-	Sender     int64             `json:"sender"`
-	RoomId     int64             `json:"roomId" form:"roomId"`
-	Source     int32             `json:"source"`
-	Type       int32             `json:"type"`
-	Content    string            `json:"content"`
-	CreatedAt  string            `json:"createdAt,type:datetime"`
-	SenderInfo *structs.UserItem `json:"senderInfo" gorm:"-"`
+	Id         int64           `json:"id"`
+	Sender     int64           `json:"sender"`
+	RoomId     int64           `json:"roomId" form:"roomId"`
+	Source     int32           `json:"source"`
+	Type       int32           `json:"type"`
+	Content    string          `json:"content"`
+	CreatedAt  string          `json:"createdAt,type:datetime"`
+	SenderInfo *types.UserItem `json:"senderInfo" gorm:"-"`
 }
 
 func GetMessageList(c *gin.Context) {
@@ -780,7 +858,7 @@ func GetMessageList(c *gin.Context) {
 
 	//获取消息发送人的信息
 	qu := helper.DbQuery.User
-	roomUsers := make([]*structs.UserItem, 0)
+	roomUsers := make([]*types.UserItem, 0)
 	err = qu.WithContext(c).
 		Join(qrc, qrc.RoomID.Eq(form.RoomId)).
 		Where(qrc.RoomID.Eq(form.RoomId)).
@@ -789,11 +867,10 @@ func GetMessageList(c *gin.Context) {
 		helper.ResponseError(c, err.Error())
 		return
 	}
-	senderUserMap := map[int64]*structs.UserItem{}
+	senderUserMap := map[int64]*types.UserItem{}
 	for _, v := range roomUsers {
 		v.AvatarUrl = helper.GenerateStaticUrl(v.Avatar)
 		senderUserMap[v.ID] = v
-		fmt.Println("senderUserMap.....Item.....", v)
 	}
 
 	//更新消息列表的消息发送列表
@@ -802,8 +879,8 @@ func GetMessageList(c *gin.Context) {
 		if sok {
 			list[k].SenderInfo = si
 		}
-
 		list[k].CreatedAt = helper.FormatTimeRFC3339ToDatetime(v.CreatedAt)
+		list[k].Content = helper.FormatFileMessageContent(v.Type, v.Content)
 	}
 
 	helper.ResponseOkWithData(c, gin.H{

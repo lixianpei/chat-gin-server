@@ -1,10 +1,3 @@
--- DROP TABLE `user`;
--- DROP TABLE user_contact;
--- DROP TABLE message;
--- DROP TABLE message_user;
--- DROP TABLE `group`;
--- DROP TABLE `group_user`;
-
 CREATE TABLE `user` (
                         `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增',
                         `phone` varchar(32) NOT NULL DEFAULT '' COMMENT '用户手机号',
@@ -41,7 +34,7 @@ CREATE TABLE `message` (
                            `sender` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '消息发送人',
                            `room_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '聊天会话ID',
                            `source` tinyint(2) unsigned NOT NULL DEFAULT '0' COMMENT '消息来源：1-私聊消息；2-群聊消息；',
-                           `type` tinyint(2) unsigned NOT NULL DEFAULT '0' COMMENT '消息类型: 1-普通文本消息；2-用户加入群聊消息；3-加好友消息；4-二进制类型；5-用户上线；6-用户下线；',
+                           `type` tinyint(2) unsigned NOT NULL DEFAULT '0' COMMENT '消息类型: 1-普通文本消息；2-图片文件；3-语音文件；4-视频文件；',
                            `content` text NOT NULL COMMENT '消息内容',
                            `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
                            `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -92,3 +85,17 @@ CREATE TABLE `room_user` (
                              KEY `idx_room_id` (`room_id`),
                              KEY `idx_user_id` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='聊天会话用户';
+
+CREATE TABLE `attachment` (
+                              `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '附件ID',
+                              `filename` varchar(64) NOT NULL DEFAULT '' COMMENT '附件名称',
+                              `size` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT '附件大小：单位-字节（B）',
+                              `type` varchar(64) NOT NULL DEFAULT '' COMMENT '类型content-type',
+                              `extension` varchar(64) NOT NULL DEFAULT '' COMMENT '扩展名',
+                              `path` varchar(255) NOT NULL DEFAULT '' COMMENT '文件的相对路径',
+                              `user_id` bigint(20) NOT NULL DEFAULT '0' COMMENT '用户ID',
+                              `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                              `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                              `deleted_at` datetime DEFAULT NULL COMMENT '删除时间',
+                              PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='附件';

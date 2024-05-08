@@ -33,20 +33,23 @@ func newConfig(configPath string) (c *ConfigData) {
 }
 
 type ConfigData struct {
-	Server configServer // 服务相关配置
-	Db     configDb     // 数据库相关配置
-	WeiXin configWeiXin //微信相关配置
-	Redis  configRedis
+	Server    configServer // 服务相关配置
+	Db        configDb     // 数据库相关配置
+	WeiXin    configWeiXin //微信相关配置
+	Redis     configRedis
+	Websocket configWebsocket
 }
 
 // 服务相关配置
 type configServer struct {
-	Address              string
-	Env                  string
-	Host                 string
-	UploadFilePath       string
-	StaticFileServerPath string
-	DefaultAvatar        []string
+	Address               string
+	Env                   string
+	Host                  string
+	UploadFilePath        string
+	StaticFileServerPath  string
+	DefaultAvatar         []string
+	MaxUploadFileSizeMb   int64    //上传文件的最大容量
+	AllowUploadExtensions []string //允许上传的文件后缀
 }
 
 // 数据库相关配置
@@ -73,4 +76,11 @@ type configRedis struct {
 	Address  string
 	Password string
 	Prefix   string
+}
+
+// Websocket相关配置
+type configWebsocket struct {
+	WriteWait      int64
+	PongWait       int64
+	MaxMessageSize int64
 }

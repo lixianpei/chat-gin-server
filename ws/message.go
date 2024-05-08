@@ -1,29 +1,28 @@
 package ws
 
 import (
-	"GoChatServer/consts"
 	"GoChatServer/dal/model/chat_model"
 	"GoChatServer/dal/query/chat_query"
-	"GoChatServer/dal/structs"
+	"GoChatServer/dal/types"
 	"GoChatServer/helper"
 	"GoChatServer/service"
 	"encoding/json"
 	"fmt"
-	"github.com/gin-gonic/gin"
+	"strings"
 	"time"
 )
 
 // Message 消息
 type Message struct {
-	MessageId  int64             `json:"messageId"`  //消息ID
-	Type       int32             `json:"type"`       //消息类型
-	Sender     int64             `json:"sender"`     //消息发送的用户ID
-	Receiver   int64             `json:"receiver"`   //消息接收的用户ID
-	RoomId     int64             `json:"roomId"`     //消息关联的群ID
-	Data       string            `json:"content"`    //消息内容
-	Time       string            `json:"time"`       //消息
-	SenderInfo *structs.UserItem `json:"senderInfo"` //消息发送人信息 TODO 后期关键信息去掉
-	RoomInfo   *structs.RoomInfo `json:"roomInfo"`
+	MessageId  int64           `json:"messageId"`  //消息ID
+	Type       int32           `json:"type"`       //消息类型
+	Sender     int64           `json:"sender"`     //消息发送的用户ID
+	Receiver   int64           `json:"receiver"`   //消息接收的用户ID
+	RoomId     int64           `json:"roomId"`     //消息关联的群ID
+	Content    string          `json:"content"`    //消息内容 消息类型: 1-普通文本消息；2-图片文件；3-语音文件；4-视频文件； 除1类型外，其他三种文件类型消息内容格式：{"attachment_id":7,"filepath":"xxx.pdf"}
+	Time       string          `json:"time"`       //消息
+	SenderInfo *types.UserItem `json:"senderInfo"` //消息发送人信息
+	RoomInfo   *types.RoomInfo `json:"roomInfo"`   //聊天室信息
 }
 
 // ToString 对消息格式化
@@ -37,30 +36,16 @@ func (m *Message) ToString() (messageStr string) {
 	return messageStr
 }
 
-// NewMessageText 实例化一个文本类型的消息
-func NewMessageText(messageId int64, data string, sender int64, receiver int64, roomId int64) *Message {
-	return &Message{
-		MessageId: messageId,
-		Type:      consts.MessageTypeEntryGroup,
-		Sender:    sender,
-		Receiver:  receiver,
-		RoomId:    roomId,
-		Data:      data,
-		Time:      time.Now().Local().Format(time.DateTime),
-	}
-}
-
-// NewEntryGroupMessage 返回一个入群消息
-func NewEntryGroupMessage(data string) string {
-	message := NewMessageText(0, data, 0, 0, 0)
-	return message.ToString()
-}
-
 // HandleMessageSaveAndSend 处理用户消息保存和发送
 func HandleMessageSaveAndSend(wsMessage string, sender int64) (messageData Message, err error) {
 	err = json.Unmarshal([]byte(wsMessage), &messageData)
 	if err != nil {
 		return messageData, err
+	}
+	messageData.Content = strings.TrimSpace(messageData.Content)
+	if messageData.RoomId == 0 || len(messageData.Content) == 0 {
+		helper.Logger.Errorf("消息格式错误，不能正确处理: %s", wsMessage)
+		return messageData, fmt.Errorf("消息格式错误，不能正确处理")
 	}
 
 	mSenderInfo, err := service.User.GetMessageUserById(sender)
@@ -72,8 +57,8 @@ func HandleMessageSaveAndSend(wsMessage string, sender int64) (messageData Messa
 	mMessage := chat_model.Message{
 		Sender:  mSenderInfo.ID,
 		RoomID:  messageData.RoomId,
-		Content: messageData.Data,
-		Type:    consts.MessageTypeNormal,
+		Content: messageData.Content,
+		Type:    messageData.Type,
 	}
 	fmt.Printf("mMessage....... %+v", mMessage)
 	//消息关联的用户
@@ -88,7 +73,7 @@ func HandleMessageSaveAndSend(wsMessage string, sender int64) (messageData Messa
 		}
 
 		//查询消息关联的用户
-		users, err := service.User.GetMessageReceiverUsers(messageData.RoomId, messageData.Receiver)
+		users, err := service.User.GetMessageReceiverUsers(messageData.RoomId)
 		if err != nil {
 			return err
 		}
@@ -126,22 +111,21 @@ func HandleMessageSaveAndSend(wsMessage string, sender int64) (messageData Messa
 	messageData.SenderInfo = mSenderInfo
 	messageData.Sender = sender
 
-	messageData.RoomInfo = &structs.RoomInfo{}
 	qr := helper.DbQuery.Room
+	messageData.RoomInfo = &types.RoomInfo{}
 	_ = qr.Where(qr.ID.Eq(messageData.RoomId)).Scan(&messageData.RoomInfo)
+
+	messageData.Content = helper.FormatFileMessageContent(messageData.Type, messageData.Content)
 
 	// 根据消息关联的用户发送消息
 	messageJson, _ := json.Marshal(messageData)
 	for _, messageUser := range messageUsers {
 		messageReceiverUserId := messageUser.Receiver
-		fmt.Println("消息准备发送给好友：", sender, messageReceiverUserId, string(messageJson))
-		//判断是否为好友，不是好友不给发私聊消息
-		if yes, _ := service.User.IsFriendContact(&gin.Context{Request: nil}, sender, messageReceiverUserId); yes > 0 {
-			fmt.Println("消息准备发送给好友：ok....")
-			go IM.SendMessageByUserId(messageJson, messageReceiverUserId)
-		} else {
-			helper.Logger.Infof("消息接收用户还不是好友[%d]，无法给用户发送消息: %s", messageReceiverUserId, messageJson)
+		//TODO 暂时针对自己发送的消息，不推送给自己，前端视为直接发送成功
+		if messageReceiverUserId == messageData.Sender {
+			continue
 		}
+		go IM.SendMessageByUserId(messageJson, messageReceiverUserId)
 	}
 
 	return messageData, nil

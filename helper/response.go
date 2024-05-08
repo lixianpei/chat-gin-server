@@ -17,8 +17,8 @@ type responseData struct {
 	Code     int         `json:"code"`
 	Message  string      `json:"message"`
 	Data     interface{} `json:"data"`
-	TraceId  string      `json:"trace_id"`
-	TraceSql []string    `json:"trace_sql"`
+	TraceId  string      `json:"traceId"`
+	TraceSql []string    `json:"traceSql"`
 }
 
 func response(c *gin.Context, result *responseData) {

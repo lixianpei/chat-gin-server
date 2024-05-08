@@ -1,4 +1,4 @@
-package structs
+package types
 
 // UserItem 用户信息
 type UserItem struct {

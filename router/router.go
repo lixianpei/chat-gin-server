@@ -9,17 +9,6 @@ import (
 func InitRoute(e *gin.Engine) {
 
 	//全局中间件
-	//e.Use(gin.LoggerWithConfig(gin.LoggerConfig{
-	//	Formatter: func(params gin.LogFormatterParams) string {
-	//		traceId := uuid.NewV4().String()
-	//		fmt.Println("LoginAuthHandler...uuid", traceId)
-	//
-	//		helper.Logger.WithFields(logrus.Fields{
-	//			consts.TraceId: traceId,
-	//		})
-	//		return ""
-	//	},
-	//}))
 	e.Use(middleware.TraceHandler()) //必须第一个，便于记录traceId
 	e.Use(middleware.RecoveryHandler())
 
@@ -35,6 +24,7 @@ func InitRoute(e *gin.Engine) {
 		apiRouter.POST("/im/userInfoSave", api.UserInfoSave)
 		apiRouter.POST("/im/getOnlineList", api.GetOnlineList)
 		apiRouter.POST("/im/upload", api.UploadFile)
+		apiRouter.POST("/im/uploads", api.UploadFiles)
 		apiRouter.POST("/im/searchUser", api.SearchUser)
 		apiRouter.POST("/im/userDetail", api.UserDetail)
 		apiRouter.POST("/im/addFriend", api.ApplyFriend)

@@ -50,7 +50,7 @@ func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (stri
 	sql, rows := fc()
 	log.Println(sql)
 	//构造SQL日志内容
-	sqlLogContent := fmt.Sprintf("GormLogger:time=[%s],rows=[%d],SQL: %s", time.Since(begin).String(), rows, sql)
+	sqlLogContent := fmt.Sprintf("%s [time=%s,rows=%d]", sql, time.Since(begin).String(), rows)
 	//在ctx中获取到Gin的上下文，然后通过把当前sql设置上下文中，返回数据时直接读取
 	c, ok := ctx.Value(gin.ContextKey).(*gin.Context)
 	if ok {

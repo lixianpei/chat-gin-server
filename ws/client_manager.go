@@ -61,12 +61,6 @@ func (manager *ClientManager) ClientRegister(client *Client) {
 	//注册用户
 	manager.clients[client] = true
 	manager.clientsUserIdMap[client.userId] = client
-
-	//发送广播消息
-	helloMessage := NewEntryGroupMessage(fmt.Sprintf("欢迎“%s”进入聊天", client.userInfo.Nickname))
-	manager.SendBroadcastMessage([]byte(helloMessage))
-
-	//发送消息给好友
 }
 
 // ClientUnregister 用户离线事件处理

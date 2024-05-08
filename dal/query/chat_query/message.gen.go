@@ -51,7 +51,7 @@ type message struct {
 	Sender    field.Int64  // 消息发送人
 	RoomID    field.Int64  // 聊天会话ID
 	Source    field.Int32  // 消息来源：1-私聊消息；2-群聊消息；
-	Type      field.Int32  // 消息类型: 1-普通文本消息；2-用户加入群聊消息；3-加好友消息；4-二进制类型；5-用户上线；6-用户下线；
+	Type      field.Int32  // 消息类型: 1-普通文本消息；2-图片文件；3-语音文件；4-视频文件；
 	Content   field.String // 消息内容
 	CreatedAt field.Time   // 创建时间
 	UpdatedAt field.Time   // 更新时间

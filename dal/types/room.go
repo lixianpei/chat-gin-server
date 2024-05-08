@@ -1,4 +1,4 @@
-package structs
+package types
 
 type RoomListItem struct {
 	RoomId        int64            `gorm:"column:roomId" json:"roomId"`
