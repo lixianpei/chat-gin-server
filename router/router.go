@@ -34,5 +34,6 @@ func InitRoute(e *gin.Engine) {
 		apiRouter.POST("/im/getRoomList", api.GetRoomList)
 		apiRouter.POST("/im/setMessageReadStatus", api.SetMessageReadStatus)
 		apiRouter.POST("/im/getMessageList", api.GetMessageList)
+		apiRouter.POST("/im/sendMessage", api.SendMessage)
 	}
 }

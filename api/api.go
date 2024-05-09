@@ -888,3 +888,31 @@ func GetMessageList(c *gin.Context) {
 		"count": count,
 	})
 }
+
+type SendMessageForm struct {
+	Type     int32  `form:"type" binding:"required"`
+	RoomId   int64  `form:"roomId" binding:"required"`
+	Receiver int64  `form:"receiver"`
+	Content  string `form:"content" binding:"required"`
+}
+
+func SendMessage(c *gin.Context) {
+	form := &SendMessageForm{}
+	err := c.BindJSON(&form)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+	messageStr, err := json.Marshal(form)
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+	messageData, err := ws.HandleMessageSaveAndSend(string(messageStr), c.GetInt64(consts.UserId))
+	if err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
+	messageData.Content = helper.FormatFileMessageContent(form.Type, messageData.Content)
+	helper.ResponseOkWithData(c, messageData)
+}
