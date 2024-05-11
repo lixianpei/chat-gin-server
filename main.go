@@ -4,7 +4,14 @@ import (
 	"GoChatServer/helper"
 	"GoChatServer/router"
 	"GoChatServer/ws"
+	"context"
+	"errors"
 	"github.com/gin-gonic/gin"
+	"log"
+	"net/http"
+	"os"
+	"os/signal"
+	"time"
 )
 
 func main() {
@@ -16,15 +23,40 @@ func main() {
 	//helper.InitRedis()
 
 	//_ = gin.Default()                             //创建gin实例
-	engine := gin.New()                           //创建gin实例
-	router.InitRoute(engine)                      //初始化API路由
-	ws.InitWebsocket(engine)                      //初始化Ws
-	engine.Static("/static/uploads", "./uploads") //开启静态文件服务
+	r := gin.New()                           //创建gin实例
+	router.InitRoute(r)                      //初始化API路由
+	ws.InitWebsocket(r)                      //初始化Ws
+	r.Static("/static/uploads", "./uploads") //开启静态文件服务
 
-	//启动服务 TODO : 优雅启动
-	err := engine.Run(helper.Configs.Server.Address)
-	if err != nil {
-		helper.Logger.Error("Main服务启动异常：", err.Error())
+	//优雅启动
+	run(r)
+}
+
+func run(r *gin.Engine) {
+	srv := &http.Server{
+		Addr:    helper.Configs.Server.Address,
+		Handler: r,
 	}
-	helper.Logger.Error("Main服务已停止....")
+
+	go func() {
+		// 服务连接
+		helper.Logger.Info("Server Start ...")
+		if err := srv.ListenAndServe(); err != nil && errors.Is(err, http.ErrServerClosed) {
+			log.Fatalf("listen: %s\n", err)
+		}
+	}()
+
+	// 等待中断信号以优雅地关闭服务器（设置 5 秒的超时时间）
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+	<-quit
+	helper.Logger.Info("Shutdown Server ...")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		helper.Logger.Infof("Server Shutdown: %s", err.Error())
+	}
+	helper.Logger.Infof("Server exiting")
+
 }

@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 	helper.InitLogger()
 	helper.InitRedis()
 
-	//helper.InitChatDatabase()
+	helper.InitChatDatabase()
 
 	fmt.Println("TestMain...")
 	os.Exit(m.Run())
