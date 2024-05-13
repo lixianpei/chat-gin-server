@@ -913,6 +913,6 @@ func SendMessage(c *gin.Context) {
 		helper.ResponseError(c, err.Error())
 		return
 	}
-	messageData.Content = helper.FormatFileMessageContent(form.Type, messageData.Content)
+	//messageData.Content = helper.FormatFileMessageContent(form.Type, messageData.Content)
 	helper.ResponseOkWithData(c, messageData)
 }
