@@ -1,3 +1,10 @@
+-- DROP TABLE GROUP;
+-- DROP TABLE group_user;
+-- DROP TABLE message;
+-- DROP TABLE message_user;
+-- DROP TABLE USER;
+-- DROP TABLE user_contact;
+
 CREATE TABLE `user` (
                         `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT '自增',
                         `phone` varchar(32) NOT NULL DEFAULT '' COMMENT '用户手机号',

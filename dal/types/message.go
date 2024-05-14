@@ -23,4 +23,5 @@ type MessageListUserItem struct {
 type MessageFileInfo struct {
 	AttachmentId int64  `json:"attachmentId"`
 	Filepath     string `json:"filepath"`
+	Duration     int64  `json:"duration"`
 }
