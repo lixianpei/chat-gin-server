@@ -669,7 +669,7 @@ func AddRoomUser(c *gin.Context) {
 }
 
 type GetRoomListForm struct {
-	RoomId int64 `form:"roomId" json:"roomId" binding:"required"`
+	RoomId int64 `form:"roomId"`
 }
 
 // GetRoomList 获取聊天列表
