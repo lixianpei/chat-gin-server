@@ -36,9 +36,9 @@ gin、gorilla/websocket、jwt、trace、gorm、gen、logger、snowflake、redis�
 - 发送私聊消息
 - 发送群聊消息
 - 获取好友列表
-- 
-#### TODO
-- [ ] 发送图片消息
-- [ ] 群聊@用户发送消息
-- [ ] 发送语音消息
-- [ ] 语音聊天
+
+#### 小程序
+![img.png](img.png)
+![img_2.png](img_2.png)
+![img_1.png](img_1.png)
+![img_3.png](img_3.png)
