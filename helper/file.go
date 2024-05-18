@@ -92,7 +92,7 @@ func UploadFileCheck(file *multipart.FileHeader) error {
 		}
 	}
 	if !extIsOk {
-		return fmt.Errorf("文件不允许上传，仅限上传的格式：%s", strings.Join(Configs.Server.AllowUploadExtensions, "、"))
+		return fmt.Errorf("文件不允许上传，您的文件格式：%s，仅限上传的格式：%s", ext, strings.Join(Configs.Server.AllowUploadExtensions, "、"))
 	}
 	return nil
 }
