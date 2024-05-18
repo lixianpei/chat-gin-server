@@ -840,14 +840,14 @@ func GetMessageList(c *gin.Context) {
 		offset = 0
 	}
 	qm := helper.DbQuery.Message
-	qmu := helper.DbQuery.MessageUser
-	quc := helper.DbQuery.UserContact
+	//qmu := helper.DbQuery.MessageUser
+	//quc := helper.DbQuery.UserContact
 	qrc := helper.DbQuery.RoomUser
 	list := make([]*GetMessageListRes, 0)
 	count, err := qm.WithContext(c).
 		Select(qm.ID, qm.Sender, qm.RoomID.As("roomId"), qm.Source, qm.Type, qm.Content, qm.CreatedAt).
-		Join(qmu, qmu.MessageID.EqCol(qm.ID)).
-		Join(quc, quc.FriendUserID.EqCol(qm.Sender)).
+		//Join(qmu, qmu.MessageID.EqCol(qm.ID)).
+		//Join(quc, quc.FriendUserID.EqCol(qm.Sender)).
 		Where(qm.RoomID.Eq(form.RoomId)).
 		Order(qm.ID.Asc()).
 		ScanByPage(&list, offset, form.PageSize)
