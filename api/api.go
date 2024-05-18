@@ -668,11 +668,19 @@ func AddRoomUser(c *gin.Context) {
 	helper.ResponseOk(c)
 }
 
+type GetRoomListForm struct {
+	RoomId int64 `form:"roomId" json:"roomId" binding:"required"`
+}
+
 // GetRoomList 获取聊天列表
 func GetRoomList(c *gin.Context) {
+	form := GetRoomListForm{}
+	if err := c.ShouldBind(&form); err != nil {
+		helper.ResponseError(c, err.Error())
+		return
+	}
 	//获取发送给当前用户的好友列表
 	userId := c.GetInt64(consts.UserId)
-	roomId := c.GetInt64("roomId")
 
 	rooms := make([]*types.RoomListItem, 0)
 	qr := helper.DbQuery.Room
@@ -681,8 +689,8 @@ func GetRoomList(c *gin.Context) {
 
 	where := make([]gen.Condition, 0)
 	where = append(where, qru.UserID.Eq(userId))
-	if roomId > 0 {
-		where = append(where, qr.ID.Eq(roomId))
+	if form.RoomId > 0 {
+		where = append(where, qr.ID.Eq(form.RoomId))
 	}
 
 	err := qr.WithContext(c).
