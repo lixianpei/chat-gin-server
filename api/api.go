@@ -697,6 +697,7 @@ func GetRoomList(c *gin.Context) {
 		Select(qr.ID.As("roomId"), qr.Title, qr.Type, qr.LastMessageID).
 		Join(qru, qru.RoomID.EqCol(qr.ID)).
 		LeftJoin(qm, qm.ID.EqCol(qr.LastMessageID)).
+		Where(where...).
 		Where(qru.UserID.Eq(userId)).
 		Order(qr.UpdatedAt.Desc()).
 		Scan(&rooms)
